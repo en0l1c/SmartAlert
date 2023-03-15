@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical" >
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="10dp"
+
+        android:layout_gravity="center"
+        android:gravity="center">
+
+    <EditText
+        android:id="@+id/alertTitleET"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:hint="@string/titleOfAlert"
+        android:inputType="textPersonName" />
+
+        <!-- Timestamp -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:orientation="horizontal"
+        android:layout_gravity="left"
+        android:gravity="center">
+
+
+        <TextView
+            android:id="@+id/tsTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+
+            android:padding="10dp"
+            android:text="@string/timestampTV" />
+        <TextView
+            android:id="@+id/timestampTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+
+            android:textColor="#39FF14"
+            android:padding="10dp"
+            android:text="" />
+
+
+        <Button
+            android:id="@+id/refreshTsBtn"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="right"
+            android:padding="10dp"
+            android:layout_marginRight="10dp"
+            android:text=""
+            android:visibility="visible"
+            app:icon="@android:drawable/ic_popup_sync" />
+
+    </LinearLayout>
+
+        <!-- GPS -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_gravity="left"
+        android:gravity="center">
+
+
+        <TextView
+            android:id="@+id/gpsTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:padding="10dp"
+            android:text="@string/locationTV" />
+
+        <TextView
+            android:id="@+id/gpsTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:padding="10dp"
+            android:text="@string/waitToGetGps"
+            android:textColor="#39FF14" />
+
+        <Button
+            android:id="@+id/refreshGpsBtn"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center_horizontal|center_vertical"
+            android:padding="10dp"
+            android:layout_marginRight="10dp"
+            android:text=""
+            android:visibility="visible"
+            app:icon="@android:drawable/ic_popup_sync" />
+
+
+    </LinearLayout>
+
+
+    <EditText
+        android:id="@+id/alertDescriptionET"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="top"
+        android:ems="10"
+        android:hint="@string/alertDescriptioET"
+        android:inputType="textMultiLine" />
+
+    <TextView
+        android:id="@+id/textView5"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="@string/alertCategoryTV" />
+
+    <Spinner
+        android:id="@+id/alertCategorySpinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:spinnerMode="dialog"
+        android:entries="@array/alertCategory"/>
+
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_gravity="center"
+
+        android:gravity="center">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/selectImgBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:visibility="visible"
+                android:text="Select"
+                app:icon="@android:drawable/ic_menu_gallery"
+                android:textAlignment="center"/>
+
+
+
+        </LinearLayout>
+
+
+        <Button
+            android:id="@+id/deletePoiBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="left|center"
+            android:text="Delete POI"
+            android:layout_weight="1"
+            android:visibility="invisible" />
+
+        <Button
+            android:id="@+id/submitAlertBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_gravity="center"
+            android:text="@string/submitAlertBtn"
+            android:visibility="visible" />
+    </LinearLayout>
+
+        <TextView
+            android:id="@+id/imgSelectedTV"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="There is no image selected"
+            android:visibility="visible"/>
+
+    </LinearLayout>
+</LinearLayout>
+
+
+

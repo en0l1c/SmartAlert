@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="flood">Flood</string>
+    <string name="fire">Fire</string>
+    <string name="earthquake">Earthquake</string>
+    <string name="otherNaturalDisaster">Other Natural Disaster</string>
+</resources>

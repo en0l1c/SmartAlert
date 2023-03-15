@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="usernameTS" translatable="false">Email</string>
+    <string name="passwordTS">Password</string>
+    <string name="loginBtn">Sign In</string>
+    <string name="registerBtn">Sign Up</string>
+    <string name="fullnameTV">Full Name</string>
+    <string name="logoutBtn">Sign Out</string>
+    <string name="seperatorTV">— OR —</string>
+    <string name="titleOfAlert">Alert Title</string>
+    <string name="timestampTV">Timestamp</string>
+    <string name="locationTV">Location:</string>
+    <string name="waitToGetGps">waiting to get location...</string>
+    <string name="alertDescriptioET">Describe the alert</string>
+    <string name="alertCategoryTV">Category:</string>
+    <string name="submitAlertBtn">Submit</string>
+
+
+</resources>

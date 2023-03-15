@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SmartAlert</string>
+    <string name="usernameTS">Ηλ.Ταχυδρομείο</string>
+    <string name="passwordTS">Κωδικός</string>
+    <string name="loginBtn">Σύνδεση</string>
+    <string name="registerBtn">Εγγραφή</string>
+    <string name="fullnameTV">Ονοματεπώνυμο</string>
+    <string name="logoutBtn">Αποσύνδεση</string>
+    <string name="seperatorTV">— Ή —</string>
+    <string name="signingOut">Πραγματοποιείτε έξοδο</string>
+    <string name="areYouSure">Είσαι σίγουρος;</string>
+    <string name="exitingFromApp">Θέλετε να κλείσετε την εφαρμογή;</string>
+
+
+    <string name="flood">Πλημμύρα</string>
+    <string name="fire">Πυρκαγιά</string>
+    <string name="earthquake">Σεισμός</string>
+    <string name="otherNaturalDisaster">Άλλες φυσικές καταστροφές</string>
+
+    <string name="submitAlert">Καταγραφή Κινδύνου</string>
+    <string name="titleOfAlert">Τίτλος Κινδύνου</string>
+    <string name="timestampTV">Χρονοσφραγίδα:</string>
+    <string name="locationTV">Τοποθεσία:</string>
+    <string name="waitToGetGps">αναμονή λήψης τοποθεσίας...</string>
+    <string name="alertDescriptioET">Περιγραφή του κινδύνου</string>
+    <string name="alertCategoryTV">Κατηγορία Κινδύνου:</string>
+    <string name="submitAlertBtn">Υποβολή</string>
+
+
+</resources>
