@@ -60,6 +60,9 @@ public class AdminActivity extends AppCompatActivity {
     ImageView imgView;
     ArrayList<Integer> dangerPos = new ArrayList<Integer>();
     ArrayList<String> dangerPosByTs = new ArrayList<String>();
+    ArrayList<String> nearbyLocations = new ArrayList<String>();
+
+    Alert alert;
 
     //String timestampLast = "0";
     //String timestampCurrent;
@@ -77,13 +80,14 @@ public class AdminActivity extends AppCompatActivity {
         //databaseReference = database.getReference("ALERTS");
 
 
-        compareAlerts();
+        //compareAlerts();
 
 
         adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, list);
 
 
         listView.setAdapter(adapter);
+
 
 
 
@@ -121,14 +125,30 @@ public class AdminActivity extends AppCompatActivity {
                                 selectedFromList);
 
 
-                        Toast.makeText(AdminActivity.this, "Real Position: " + String.valueOf(position), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(AdminActivity.this, "Position at ListView: " + String.valueOf(position), Toast.LENGTH_SHORT).show();
+
+
+                        // print nearbyLocation titles for testing
+//                        for(int i = 0; i <= nearbyLocations.size() - 1; i++) {
+//                            Toast.makeText(AdminActivity.this, "NearbyLocation: " + nearbyLocations.get(i), Toast.LENGTH_SHORT).show();
+//                        }
+
+
 
 
                         // change of list items that danger is 3
                         //changeListItemColor();
-                        for(int i = 0; i < dangerPos.size() - 1; i++) {
-                            Toast.makeText(AdminActivity.this, "DangerPos: " + dangerPos.get(i), Toast.LENGTH_SHORT).show();
+//                        for(int i = 0; i < dangerPos.size() - 1; i++) {
+//                            Toast.makeText(AdminActivity.this, "DangerPos: " + dangerPos.get(i), Toast.LENGTH_SHORT).show();
+//                        }
+
+                        for(int i = 0; i <= nearbyLocations.size() - 1; i++) {
+                            Toast.makeText(AdminActivity.this, "NearbyLocations: " + nearbyLocations.get(i) + "\nListSize: " + nearbyLocations.size(), Toast.LENGTH_SHORT).show();
                         }
+//                        for(int i = nearbyLocations.size(); i >= 0; i--) {
+//                            Toast.makeText(AdminActivity.this, "nls: " + i, Toast.LENGTH_SHORT).show();
+//                        }
+                        Toast.makeText(AdminActivity.this, "nls size: " + nearbyLocations.size(), Toast.LENGTH_SHORT).show();
 
 
                     }
@@ -145,12 +165,6 @@ public class AdminActivity extends AppCompatActivity {
             }
 
         });
-
-
-
-
-
-
 
     }
     private void changeListItemColor() {
@@ -181,7 +195,7 @@ public class AdminActivity extends AppCompatActivity {
     //https://stackoverflow.com/questions/2217753/changing-background-color-of-listview-items-on-android
     //https://stackoverflow.com/questions/32393134/getting-results-of-nearby-places-from-users-location-using-google-maps-api-in-a
 
-    private double calcDistance(double latLast, double lngLast, double latCurrent, double lngCurrent) {
+    static public double calcDistance(double latLast, double lngLast, double latCurrent, double lngCurrent) {
 
         // check distance
         double earthRadius = 6371; // in kilometers
@@ -200,13 +214,15 @@ public class AdminActivity extends AppCompatActivity {
         return dist;
 
     }
-    private boolean isTimeValid(String timestampLast,
-                          String timestampCurrent) {
+    static public boolean isTimeValid(int timestampLast,
+                          int timestampCurrent) {
         try {
             // firstly convert string epoch to number for comparison
 
-            int tsLast = Integer.parseInt(timestampLast);
-            int tsCurrent = Integer.parseInt(timestampCurrent);
+            int tsLast = timestampLast;
+            int tsCurrent = timestampCurrent;
+//            int tsLast = Integer.parseInt(timestampLast);
+//            int tsCurrent = Integer.parseInt(timestampCurrent);
 
 
             // calculate the time (in seconds) difference between two epochs
@@ -234,109 +250,283 @@ public class AdminActivity extends AppCompatActivity {
     }
 
 
+
     private void compareAlerts() {
         DatabaseReference dataRef = FirebaseDatabase.getInstance().getReference("ALERT");
         //listView = findViewById(R.id.listView);
 
 
-        dataRef.addValueEventListener(new ValueEventListener() {
-            String categoryLast;
-            String categoryCurrent;
-
-            String timestampLast;
-            String timestampCurrent;
-
-            double latCurrent = 0;
-            double lngCurrent = 0;
-            double latLast;
-            double lngLast;
-            int userCounter = 0;
-            double distance;
-
-
-            HashMap hashMap = new HashMap<String, String>();
+        AsyncTask.execute(new Runnable() {
             @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
+            public void run() {
+                dataRef.addValueEventListener(new ValueEventListener() {
+                    String categoryLast;
+                    String categoryCurrent;
+
+                    String timestampLast;
+                    String timestampCurrent;
+
+                    double latCurrent = 0;
+                    double lngCurrent = 0;
+                    double latLast;
+                    double lngLast;
+                    int userCounter = 0;
+                    double distance;
+                    String titleLast;
 
 
-                for(DataSnapshot dataSnapshot : snapshot.getChildren()) {
-                    Alert alert = snapshot.child(dataSnapshot.getKey()).getValue(Alert.class);
-
-                    // save last location and current location to compare them on isLocationValid method
-                    latLast = latCurrent;
-                    lngLast = lngCurrent;
-                    latCurrent = alert.getLat();
-                    lngCurrent = alert.getLng();
-
-
-                    //boolean isValidAlert = true;
-
-                    // save last timestamp and current timestamp to compare them on isValidTime method
-                    timestampLast = timestampCurrent; // time when alert submitted
-                    timestampCurrent = alert.getTimestamp();
-                    //timestampCurrent = String.valueOf(System.currentTimeMillis() / 1000); // current time
-
-
-
-
-                    // categories
-                    categoryLast = categoryCurrent;
-                    categoryCurrent = alert.getCategory();
+                    HashMap hashMap = new HashMap<String, String>();
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        // edw tha parei to location apo to antistoixo item tis realtime database kai meta stin for parakatw tha sugkrinetai to kathe location me autoj
 
 
 
-                    distance = calcDistance(latLast, lngLast, latCurrent, lngCurrent);
 
-//                    // 1st alert set danger to 1, 2nd-6th set danger to 2, and the 7th alert on the location border and in-time set danger to 3
-                    if((distance < 0.9) &&
-                            isTimeValid(timestampLast, timestampCurrent) &&
-                            Objects.equals(categoryLast, categoryCurrent)
-                    ) {
-                        if(userCounter>=7) {
-                            hashMap.put("danger", "3");
-                            databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
+                        // get the first location and with for check all other locations if nearby
+                        try {
+                            latLast = alert.getLat();
+                            lngLast = alert.getLng();
+                            titleLast = alert.getTitle();
+
+                            timestampLast = alert.getTimestamp();
+                            categoryLast = alert.getCategory();
                         }
-                        else {
-                            hashMap.put("danger", "2");
-                            databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
+                        catch(Exception e) {
+
                         }
-                        userCounter++;
+
+//                Toast.makeText(AdminActivity.this, "latLast: " + latLast, Toast.LENGTH_SHORT).show();
+
+
+                        for(DataSnapshot dataSnapshot : snapshot.getChildren()) {
+                            //Alert alert = snapshot.child(dataSnapshot.getKey()).getValue(Alert.class);
+
+                            // save last location and current location to compare them on isLocationValid method
+
+
+                            try {
+
+
+                                latCurrent = alert.getLat();
+                                lngCurrent = alert.getLng();
+
+                                //boolean isValidAlert = true;
+
+                                // save last timestamp and current timestamp to compare them on isValidTime method
+                                //timestampLast = timestampCurrent; // time when alert submitted
+                                timestampCurrent = alert.getTimestamp();
+
+                                //timestampCurrent = String.valueOf(System.currentTimeMillis() / 1000); // current time
+
+
+                                // categories
+                                //categoryLast = categoryCurrent;
+                                categoryCurrent = alert.getCategory();
+
+
+
+                                distance = calcDistance(latLast, lngLast, latCurrent, lngCurrent);
+
+
+
+
+//                    if(distance < 0.9 && Objects.equals(categoryLast, categoryCurrent) && isTimeValid(timestampLast, timestampCurrent))
+                                if(distance < 0.9){
+                                    nearbyLocations.add(alert.getTitle());
+//                        if there is more than 6 alerts on the same location the dangerous level goes to 3
+                                    if(userCounter >= 6) {
+//                                        if(isTimeValid(timestampLast, timestampCurrent) && Objects.equals(categoryLast, categoryCurrent)) {
+//                                            hashMap.put("danger", "3.");
+//                                            databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
+//                                        }
+//                                        else {
+//                                            hashMap.put("danger", "22");
+//                                            databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
+//                                        }
+
+                                    }
+                                    else {
+                                        hashMap.put("danger", "2.");
+                                        databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
+                                    }
+                                    userCounter++;
+
+                                }
+                                else {
+                                    hashMap.put("danger", "1.");
+                                    databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
+//                        Toast.makeText(AdminActivity.this, alert.getTitle() + " false", Toast.LENGTH_SHORT).show();
+
+                                }
+
+
+
+                            }
+                            catch(Exception e) {
+
+                            }
+
+
+
+
+                        }
+                        userCounter = 0;
+                        latCurrent = 0;
+                        lngCurrent = 0;
 
                     }
-                    else {
-                        hashMap.put("danger", "1");
-                        databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
-                        //userCounter--;
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+
                     }
-
-                }
-                userCounter = 0;
-                latCurrent = 0;
-                lngCurrent = 0;
-
-
-
-
-//                try {
-//                    for(int i = 0; i <= dangerPosByTs.size(); i++) {
-//                        Toast.makeText(AdminActivity.this, "TS: " + dangerPosByTs.get(i), Toast.LENGTH_SHORT).show();
-//                        //listView.getChildAt(i).setBackgroundColor(Color.RED);
-//                    }
-////                    for(int i = 0; i <= dangerPos.size(); i++) {
-////                        listView.getChildAt(dangerPos.get(i)).setBackgroundColor(Color.RED);
-////                    }
-//                }
-//                catch(Exception e) {
-//                    Toast.makeText(AdminActivity.this, "there is no danger 3 alerts", Toast.LENGTH_SHORT).show();
-//                }
-
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
+                });
             }
         });
+
+
+//        dataRef.addValueEventListener(new ValueEventListener() {
+//            String categoryLast;
+//            String categoryCurrent;
+//
+//            String timestampLast;
+//            String timestampCurrent;
+//
+//            double latCurrent = 0;
+//            double lngCurrent = 0;
+//            double latLast;
+//            double lngLast;
+//            int userCounter = 0;
+//            double distance;
+//            String titleLast;
+//
+//
+//            HashMap hashMap = new HashMap<String, String>();
+//            @Override
+//            public void onDataChange(@NonNull DataSnapshot snapshot) {
+//                // edw tha parei to location apo to antistoixo item tis realtime database kai meta stin for parakatw tha sugkrinetai to kathe location me autoj
+//
+//
+//
+//
+//                // get the first location and with for check all other locations if nearby
+//                try {
+//                    latLast = alert.getLat();
+//                    lngLast = alert.getLng();
+//                    titleLast = alert.getTitle();
+//                }
+//                catch(Exception e) {
+//
+//                }
+//
+////                Toast.makeText(AdminActivity.this, "latLast: " + latLast, Toast.LENGTH_SHORT).show();
+//
+////                for(DataSnapshot dataSnapshot : snapshot.getChildren()) {
+////
+////                }
+//
+//
+//                for(DataSnapshot dataSnapshot : snapshot.getChildren()) {
+////                    Alert alert = snapshot.child(dataSnapshot.getKey()).getValue(Alert.class);
+//
+//                    // save last location and current location to compare them on isLocationValid method
+//
+//
+//                    latCurrent = alert.getLat();
+//                    lngCurrent = alert.getLng();
+//
+////                    Toast.makeText(AdminActivity.this, "latCurrent: " + latCurrent, Toast.LENGTH_SHORT).show();
+//
+//
+//
+//
+//
+//                    //boolean isValidAlert = true;
+//
+//                    // save last timestamp and current timestamp to compare them on isValidTime method
+//                    timestampLast = timestampCurrent; // time when alert submitted
+//                    timestampCurrent = alert.getTimestamp();
+//                    //timestampCurrent = String.valueOf(System.currentTimeMillis() / 1000); // current time
+//
+//
+//                    // categories
+//                    categoryLast = categoryCurrent;
+//                    categoryCurrent = alert.getCategory();
+//
+//
+//
+//                    distance = calcDistance(latLast, lngLast, latCurrent, lngCurrent);
+//
+//                    showMessage("", "First Location: \n" +
+//                            "latCurrent: " + latLast + "," + lngLast +
+//                            "\nLocationTitle: " + titleLast +
+//                            "\ndisatnce: " + distance +
+//                            "\n\nSecond Location: \n" +
+//                            "latCurrent: " + latCurrent + "," + lngCurrent +
+//                            "\nLocationTitle: " + alert.getTitle() +
+//                            "\ndisatnce: " + distance);
+//
+//
+//
+////                    if(distance < 0.9 && Objects.equals(categoryLast, categoryCurrent) && isTimeValid(timestampLast, timestampCurrent))
+//                    if(distance < 0.9 && isTimeValid(timestampLast, timestampCurrent)){
+//                        nearbyLocations.add(alert.getTitle());
+////                        if there is more than 6 alerts on the same location the dangerous level goes to 3
+//                        if(userCounter >= 6) {
+//                            hashMap.put("danger", "3");
+//                            databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
+//                        }
+//                        else {
+//                            hashMap.put("danger", "2");
+//                            databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
+//                        }
+//                        userCounter++;
+//
+//                    }
+//                    else {
+//                        hashMap.put("danger", "1");
+//                        databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
+////                        Toast.makeText(AdminActivity.this, alert.getTitle() + " false", Toast.LENGTH_SHORT).show();
+//
+//                    }
+//
+//
+//                    // 1st alert set danger to 1, 2nd-6th set danger to 2, and the 7th alert on the location border and in-time set danger to 3
+////                    if((distance < 0.9) &&
+////                            isTimeValid(timestampLast, timestampCurrent) &&
+////                            Objects.equals(categoryLast, categoryCurrent)) {
+////                        if(userCounter>=6) {
+////                            hashMap.put("danger", "3");
+////                            databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
+////                        }
+////                        else {
+////                            hashMap.put("danger", "2");
+////                            databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
+////                        }
+////                        userCounter++;
+////
+////                    }
+////                    else {
+////                        hashMap.put("danger", "1");
+////                        databaseReference.child(dataSnapshot.getKey()).updateChildren(hashMap);
+////                        //userCounter--;
+////                    }
+//
+//                }
+//                userCounter = 0;
+//                latCurrent = 0;
+//                lngCurrent = 0;
+//
+//            }
+//
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError error) {
+//
+//            }
+//        });
+
+
     }
 
     public void addDataToList() {
@@ -348,7 +538,8 @@ public class AdminActivity extends AppCompatActivity {
         databaseReference.addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-                Alert alert = snapshot.getValue(Alert.class);
+                // TODO: if anything goes wrong let the Alert alert to only alert
+                Alert alert = snapshot.getValue(Alert.class); // declared at the beginning of the code
 
                 listView = findViewById(R.id.listView);
                 list.add(alert.getTitle());
@@ -357,17 +548,18 @@ public class AdminActivity extends AppCompatActivity {
 
                 String dangerLevel = snapshot.child("danger").getValue(String.class);
                 String ts;
-                if(dangerLevel.equals("3")) {
-                    //Toast.makeText(AdminActivity.this, "addDataToList: " + String.valueOf(list.size()), Toast.LENGTH_SHORT).show();
+//                if(dangerLevel.equals("3")) {
+//                    //Toast.makeText(AdminActivity.this, "addDataToList: " + String.valueOf(list.size()), Toast.LENGTH_SHORT).show();
+//
+//                    ts = alert.getTimestamp();
+//                    // to position tou list item pou thelw na allaksw background color tautizetai me to list size (index)
+//                    // parola auta den leitourgei i allagi tou background color sto parakatw try
+//                    dangerPos.add(list.size());
+//                    dangerPosByTs.add(ts);
+//                }
+                //Toast.makeText(AdminActivity.this, "DangerPosSize: " + dangerPos.size(), Toast.LENGTH_SHORT).show();
+                //Toast.makeText(AdminActivity.this, "DangerPosByListSize: " + dangerPosByTs.size(), Toast.LENGTH_SHORT).show();
 
-                    ts = alert.getTimestamp();
-                    // to position tou list item pou thelw na allaksw background color tautizetai me to list size (index)
-                    // parola auta den leitourgei i allagi tou background color sto parakatw try
-                    dangerPos.add(list.size());
-                    dangerPosByTs.add(ts);
-                }
-                Toast.makeText(AdminActivity.this, "DangerPosSize: " + dangerPos.size(), Toast.LENGTH_SHORT).show();
-                Toast.makeText(AdminActivity.this, "DangerPosByListSize: " + dangerPosByTs.size(), Toast.LENGTH_SHORT).show();
 //                for(int i = 0; i < dangerPos.size() - 1; i++) {
 //                    Toast.makeText(AdminActivity.this, "a DangerPos: " + dangerPos.get(i), Toast.LENGTH_SHORT).show();
 //                }
@@ -418,16 +610,7 @@ public class AdminActivity extends AppCompatActivity {
             public void onCancelled(@NonNull DatabaseError error) {
 
             }
-
-
         });
-
-
-
-
-
-
-
     }
 
     public void showAndManageAlert(String title,
@@ -479,6 +662,19 @@ public class AdminActivity extends AppCompatActivity {
                     }
                 })
 
+                .show();
+    }
+
+    public void showMessage(String title, String message) {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setCancelable(true)
+                .setNegativeButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                    }
+                })
                 .show();
     }
 
