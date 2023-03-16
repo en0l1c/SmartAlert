@@ -62,6 +62,8 @@ public class AdminActivity extends AppCompatActivity {
     ArrayList<String> dangerPosByTs = new ArrayList<String>();
     ArrayList<String> nearbyLocations = new ArrayList<String>();
 
+    int listViewSelectedItem;
+
     Alert alert;
 
     //String timestampLast = "0";
@@ -96,6 +98,38 @@ public class AdminActivity extends AppCompatActivity {
         databaseReference = FirebaseDatabase.getInstance().getReference("ALERT");
 
         addDataToList();
+
+
+        /////////////////////////////////////////////////
+        // MAKE ALL DANGER 3 ITEMS RED
+        databaseReference.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+
+                int index = 0;
+
+                for(DataSnapshot dataSnapshot : snapshot.getChildren()) {
+                    String dangerLevel = dataSnapshot.child("danger").getValue(String.class);
+                    Toast.makeText(AdminActivity.this, "danger level: " + dangerLevel, Toast.LENGTH_SHORT).show();
+
+                    Toast.makeText(AdminActivity.this, listView.getChildAt(index).toString(), Toast.LENGTH_SHORT).show();
+
+                if(dangerLevel.equals("3")) {
+                    //listView.getChildAt(index).setBackgroundColor(Color.RED);
+                }
+
+                    index++;
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
+        ////////////////////////////////////////////////
+
+
 
         //  ON CLICK LISTENER FOR LISTVIEW ITEM
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {

@@ -318,6 +318,7 @@ public class LoginActivity extends AppCompatActivity {
 
                 int index = 0;
                 int sameAlertCnt = 1;
+                HashMap hashMap = new HashMap<String, String>();
 
                 while(index < lats.size()) {
                     // Location
@@ -355,12 +356,18 @@ public class LoginActivity extends AppCompatActivity {
 
                             if(sameAlertCnt >= 6) {
                                 fullList += "\n" + index + ": " + alert.getTitle() + " | Danger: 3";
+                                hashMap.put("danger", "3");
+                                dataRef.child(dataSnapshot.getKey()).updateChildren(hashMap);
                             }
                             else if(sameAlertCnt >= 3 && sameAlertCnt <=5) {
                                 fullList += "\n" + index + ": " + alert.getTitle() + " | Danger: 2";
+                                hashMap.put("danger", "2");
+                                dataRef.child(dataSnapshot.getKey()).updateChildren(hashMap);
                             }
                             else {
                                 fullList += "\n" + index + ": " + alert.getTitle() + " | Danger: 1";
+                                hashMap.put("danger", "1");
+                                dataRef.child(dataSnapshot.getKey()).updateChildren(hashMap);
                             }
                             sameAlertCnt++;
                         }
