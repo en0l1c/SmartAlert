@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="usernameTS" translatable="false">Email</string>
+    <string name="usernameTS">Email</string>
     <string name="passwordTS">Password</string>
     <string name="loginBtn">Sign In</string>
     <string name="registerBtn">Sign Up</string>

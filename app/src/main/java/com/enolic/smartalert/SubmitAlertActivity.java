@@ -5,6 +5,7 @@ import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -36,13 +37,18 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
 
@@ -79,6 +85,9 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
     FirebaseDatabase database;
     DatabaseReference databaseReference;
     private final int LOCATION_REQUEST_CODE = 123;
+
+    ArrayList<String> users = new ArrayList<>();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -206,11 +215,16 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
         // TODO: let the user know if he has selected the image with some textview
         // TODO: submitButton doesnt work on first time android as for location permission
 
+
+
+
         // SUBMIT BUTTON
         submitAlertBtn.setOnClickListener(new View.OnClickListener() {
+
             @Override
             public void onClick(View view) {
 
+//                canUserSubmitAlert();
 
                 if(!alertTitileET.getText().toString().equals("") &&
                         !alertDescriptionET.getText().toString().equals("") &&
@@ -257,7 +271,9 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
                                                         downloadUri.toString(),
                                                         forNullUserIdBug,
                                                         lat,
-                                                        lng);
+                                                        lng,
+                                                        0,
+                                                        false);
                                             }
                                             else {
                                                 Toast.makeText(SubmitAlertActivity.this, "this if is a test for null uid (with img)", Toast.LENGTH_SHORT).show();
@@ -284,7 +300,9 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
                                             "",
                                             mAuth.getUid(),
                                             lat,
-                                            lng);
+                                            lng,
+                                            0,
+                                            false);
 
 
                                     Toast.makeText(SubmitAlertActivity.this, "succesfully wrote to db without img", Toast.LENGTH_SHORT).show();
@@ -317,10 +335,56 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
                                         String image,
                                         String userId,
                                         double lat,
-                                        double lng) {
+                                        double lng,
+                                        int dangerLevel,
+                                        boolean isVerified) {
 
-        Alert alert = new Alert(title, timestasmp, location, description, category, image, userId, lat, lng);
+        Alert alert = new Alert(title,
+                timestasmp,
+                location,
+                description,
+                category,
+                image,
+                userId,
+                lat,
+                lng,
+                dangerLevel,
+                isVerified);
         databaseReference.child(title).setValue(alert);
+    }
+
+    private void canUserSubmitAlert() {
+        boolean canUserSubmit;
+        String uid = mAuth.getUid();
+        int timestampCurrent = (int) System.currentTimeMillis() / 1000; // current time
+
+
+        databaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
+            int cnt = 0;
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                for(DataSnapshot dataSnapshot : snapshot.getChildren()) {
+                    Alert alert = snapshot.child(dataSnapshot.getKey()).getValue(Alert.class);
+
+                    if(uid.equals(alert.getUserId()))
+                    {
+
+                        cnt++;
+
+                    }
+
+                }
+                Toast.makeText(SubmitAlertActivity.this, cnt, Toast.LENGTH_SHORT).show();
+
+
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+
+            }
+        });
     }
 
 
@@ -435,29 +499,7 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
 
 
         uploadTask = storageReference.putFile(imageUri);
-        //getUrlImage();
 
-//        storageReference.putFile(imageUri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-//            @Override
-//            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-//                Toast.makeText(SubmitAlertActivity.this, "TTTT: " +                 taskSnapshot.getStorage().getDownloadUrl().toString(), Toast.LENGTH_SHORT).show();
-//
-//
-//
-//
-//                Task<Uri> urlTask = taskSnapshot.getStorage().getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-//                    @Override
-//                    public void onSuccess(Uri uri) {
-//                        String link = uri.toString();
-//                        downloadUrl = link;
-//                        Toast.makeText(SubmitAlertActivity.this, link, Toast.LENGTH_SHORT).show();
-//                    }
-//                });
-//                //Toast.makeText(SubmitAlertActivity.this, link, Toast.LENGTH_SHORT).show();
-//            }
-//        });
-//
-//        Toast.makeText(SubmitAlertActivity.this, "Upload: " + downloadUrl, Toast.LENGTH_SHORT).show();
 
 
 

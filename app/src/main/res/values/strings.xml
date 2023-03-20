@@ -1,10 +1,10 @@
 <resources>
     <string name="app_name" translatable="false">SmartAlert</string>
-    <string name="usernameTS">"Email: "</string>
-    <string name="passwordTS">Password: </string>
+    <string name="usernameTS">"Email "</string>
+    <string name="passwordTS">Password </string>
     <string name="loginBtn">Sign In</string>
-    <string name="registerBtn">Register: </string>
-    <string name="fullnameTV">Full Name:</string>
+    <string name="registerBtn">Register </string>
+    <string name="fullnameTV">Full Name</string>
     <string name="logoutBtn">Sign Out</string>
     <string name="seperatorTV">— OR —</string>
     <string name="signingOut">Signing out</string>

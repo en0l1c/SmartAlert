@@ -8,9 +8,11 @@ public class Alert {
     private String category;
     private String image;
     private String userId;
-    private int dangerLevel;
+//    private int dangerLevel;
     private double lat;
     private double lng;
+    private boolean verified;
+    private int danger;
 
     public Alert() {
 
@@ -24,7 +26,9 @@ public class Alert {
                  String image,
                  String userId,
                  double lat,
-                 double lng) {
+                 double lng,
+                 int danger,
+                 boolean verified) {
         this.title = title;
         this.timestamp = timestasmp;
         this.location = location;
@@ -34,6 +38,25 @@ public class Alert {
         this.userId = userId;
         this.lat = lat;
         this.lng = lng;
+        this.danger = danger;
+        this.verified = verified;
+    }
+    public int getDanger() {
+        return danger;
+    }
+
+    public void setDanger(int danger) {
+        this.danger = danger;
+    }
+
+
+
+    public boolean isVerified() {
+        return verified;
+    }
+
+    public void setVerified(boolean verified) {
+        this.verified = verified;
     }
 
     public String getTitle() {
@@ -72,3 +95,12 @@ public class Alert {
         return userId;
     }
 }
+
+
+
+
+
+
+
+
+
