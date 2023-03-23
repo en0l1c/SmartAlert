@@ -43,13 +43,13 @@ public class UserActivity extends AppCompatActivity {
         user = mAuth.getCurrentUser();
 
 
-        if(user.getDisplayName() == null) {
-            Toast.makeText(UserActivity.this, "there is no fullname to show", Toast.LENGTH_SHORT).show();
+        if (user != null) {
+            String displayName = user.getDisplayName();
+            fullnameTS.setText(displayName);
+        } else {
 
         }
-        else {
-            fullnameTS.setText(user.getDisplayName());
-        }
+
 
 
         // SIGN OUT BUTTON

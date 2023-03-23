@@ -8,6 +8,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
@@ -22,12 +23,18 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class LoginActivity extends AppCompatActivity {
     Alert alert;
@@ -75,8 +82,10 @@ public class LoginActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
         uid = mAuth.getUid();
 
+        compareAlerts();
         //compareAlertsLogin();
         passValuesToLists();
+
 
         // take saved pref for language switch, and toogle it or not
         SharedPreferences sharedPrefs = getSharedPreferences("com.enolic.smartalert", MODE_PRIVATE);
@@ -287,7 +296,7 @@ public class LoginActivity extends AppCompatActivity {
 
                     lats.add(alert.getLat());
                     lngs.add(alert.getLng());
-                    timestamps.add(Integer.parseInt(alert.getTimestamp()));
+                    timestamps.add(alert.getTimestamp());
                     categories.add(alert.getCategory());
                     users.add(alert.getUserId());
 
@@ -304,104 +313,180 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
-        compareAlerts();
+//        compareAlerts();
     }
 
     private void compareAlerts() {
 
-        int cnt = 0;
-        DatabaseReference dataRef = FirebaseDatabase.getInstance().getReference("ALERT");
 
-        dataRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        DatabaseReference alertsRef = FirebaseDatabase.getInstance().getReference("ALERT");
+        alertsRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                String fullList = "";
-                // for every location on lats and lngs make a for loop to look for all other locations and match the neariest locations
+                // Loop through all the alerts
+                for (DataSnapshot alertSnapshot : snapshot.getChildren()) {
+                    String alertUid = alertSnapshot.child("userId").getValue(String.class);
+                    long alertTimestamp = alertSnapshot.child("timestamp").getValue(long.class);
+                    double alertLatitude = alertSnapshot.child("lat").getValue(double.class);
+                    double alertLongitude = alertSnapshot.child("lng").getValue(double.class);
+                    String alertCategory = alertSnapshot.child("category").getValue(String.class);
+                    int alertDanger = alertSnapshot.child("danger").getValue(Integer.class);
 
-                int index = 0;
-                int sameAlertCnt = 1;
-                int userCnt = 1;
-                ArrayList<String> totalUsers = new ArrayList<>();
-                HashMap hashMap = new HashMap<String, Integer>();
+                    // Check if the alert was submitted within the last 4 hours
+                    long now = System.currentTimeMillis() / 1000;
+                    if (now - alertTimestamp <= 4 * 60 * 60 ) {
+                        // Check if the alert's danger level is not already 3
+                        if (alertDanger != 3) {
+                            // Loop through all the alerts again to find other alerts with the same category and nearby location
+                            int nearbyAlerts = 0;
+                            for (DataSnapshot otherAlertSnapshot : snapshot.getChildren()) {
+                                String otherAlertUid = otherAlertSnapshot.child("userId").getValue(String.class);
+                                double otherAlertLatitude = otherAlertSnapshot.child("lat").getValue(double.class);
+                                double otherAlertLongitude = otherAlertSnapshot.child("lng").getValue(double.class);
+                                String otherAlertCategory = otherAlertSnapshot.child("category").getValue(String.class);
+                                int otherAlertDanger = otherAlertSnapshot.child("danger").getValue(Integer.class);
 
-                while(index < lats.size()) {
-                    // Location
-                    double latFromList = lats.get(index);
-                    double lngFromList = lngs.get(index);
-//                    double latFromList = 38.00356076; // uniwa
-//                    double lngFromList = 23.67547215;
+                                // Check if the other alert was submitted within the last 4 hours
+                                long otherAlertTimestamp = otherAlertSnapshot.child("timestamp").getValue(long.class);
+                                if (now - otherAlertTimestamp <= 4 * 60 * 60) {
+                                    // Check if the other alert has the same category and nearby location
+                                    if (!alertUid.equals(otherAlertUid) && alertCategory.equals(otherAlertCategory)) {
+                                        float[] results = new float[1];
+                                        Location.distanceBetween(alertLatitude, alertLongitude, otherAlertLatitude, otherAlertLongitude, results);
+                                        if (results[0] <= 1000) {
+                                            // We have found a nearby alert with the same category and within the last 4 hours
+                                            nearbyAlerts++;
 
-                    // Timestamp
-                    int tsFromList = timestamps.get(index);
-                    // Category
-                    String catFromList = categories.get(index);
-                    // User
-                    String userFromList = users.get(index);
-
-
-                    for(DataSnapshot dataSnapshot : snapshot.getChildren()) {
-
-                        Alert alert = snapshot.child(dataSnapshot.getKey()).getValue(Alert.class);
-
-                        // Location
-                        double latCurrent = dataSnapshot.child("lat").getValue(Double.class);
-                        double lngCurrent = dataSnapshot.child("lng").getValue(Double.class);
-//                        double latCurrent = alert.getLat(); // current lat from for-loop reading the realtime database
-//                        double lngCurrent = alert.getLng();
-
-                        // Timestamp
-                        int tsCurrent = Integer.parseInt(alert.getTimestamp());
-                        // Category
-                        String catCurrent = alert.getCategory();
-                        // User
-                        String userCurrent = alert.getUserId();
-
-
-                        double distance = AdminActivity.calcDistance(latFromList, lngFromList, latCurrent, lngCurrent);
-                        boolean isTimeValid = AdminActivity.isTimeValid(tsFromList, tsCurrent);
-                        boolean isCategoryValid = Objects.equals(catFromList, catCurrent);
-                        boolean isDifferentUser = Objects.equals(userFromList, userCurrent);
-
-
-                        if(distance < 0.9 && isTimeValid && isCategoryValid) {
-
-                            if(sameAlertCnt >= 6) {
-                                fullList += "\n" + index + ": " + alert.getTitle() + " | Danger: 3";
-                                alert.setDanger(3);
-                                dataRef.child(dataSnapshot.getKey()).child("danger").setValue(alert.getDanger());
+                                            if (nearbyAlerts >= 4) {
+                                                // If there are at least 5 nearby alerts with the same category within the last 4 hours, set their danger level to 3
+                                                alertsRef.child(alertSnapshot.getKey()).child("danger").setValue(3);
+                                                alertsRef.child(otherAlertSnapshot.getKey()).child("danger").setValue(3);
+                                                // You can continue to set the danger level of other nearby alerts to 3 as well, depending on your needs
+                                                break;
+                                            }
+                                            else {
+                                                alertsRef.child(alertSnapshot.getKey()).child("danger").setValue(2);
+                                                alertsRef.child(otherAlertSnapshot.getKey()).child("danger").setValue(2);
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                            else if(sameAlertCnt >= 3 && sameAlertCnt <=5) {
-                                fullList += "\n" + index + ": " + alert.getTitle() + " | Danger: 2";
-                                alert.setDanger(2);
-                                dataRef.child(dataSnapshot.getKey()).child("danger").setValue(alert.getDanger());
-                            }
-                            else {
-                                fullList += "\n" + index + ": " + alert.getTitle() + " | Danger: 1";
-                                alert.setDanger(1);
-                                dataRef.child(dataSnapshot.getKey()).child("danger").setValue(alert.getDanger());
-                            }
-                            sameAlertCnt++;
                         }
-
-                        //Toast.makeText(LoginActivity.this, String.valueOf("Lat from snaps: " + latCurrent), Toast.LENGTH_SHORT).show();
-                        //Toast.makeText(LoginActivity.this, String.valueOf(distance), Toast.LENGTH_SHORT).show();
-
-
                     }
-                    sameAlertCnt = 1;
-                    fullList += "\n";
-                    index++;
                 }
-
-
-// !!!!!!!!!               showMessage(users.size() + "Near spots: " + userCnt, fullList);
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-
+                // Handle the error
             }
         });
+
+
+
+
+
+
+
+//        int cnt = 0;
+//        DatabaseReference dataRef = FirebaseDatabase.getInstance().getReference("ALERT");
+//
+//        dataRef.addListenerForSingleValueEvent(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(@NonNull DataSnapshot snapshot) {
+//                String fullList = "";
+//                // for every location on lats and lngs make a for loop to look for all other locations and match the neariest locations
+//
+//                int index = 0;
+//                int sameAlertCnt = 1;
+//                int userCnt = 1;
+//                ArrayList<String> totalUsers = new ArrayList<>();
+//                HashMap hashMap = new HashMap<String, Integer>();
+//
+//                while(index < lats.size()) {
+//                    // Location
+//                    double latFromList = lats.get(index);
+//                    double lngFromList = lngs.get(index);
+////                    double latFromList = 38.00356076; // uniwa
+////                    double lngFromList = 23.67547215;
+//
+//                    // Timestamp
+//                    int tsFromList = timestamps.get(index);
+//                    // Category
+//                    String catFromList = categories.get(index);
+//                    // User
+//                    String userFromList = users.get(index);
+//
+//
+//                    for(DataSnapshot dataSnapshot : snapshot.getChildren()) {
+//
+//                        Alert alert = snapshot.child(dataSnapshot.getKey()).getValue(Alert.class);
+//
+//                        // Location
+//                        double latCurrent = dataSnapshot.child("lat").getValue(Double.class);
+//                        double lngCurrent = dataSnapshot.child("lng").getValue(Double.class);
+////                        double latCurrent = alert.getLat(); // current lat from for-loop reading the realtime database
+////                        double lngCurrent = alert.getLng();
+//
+//                        // Timestamp
+//                        int tsCurrent = alert.getTimestamp();
+//                        // Category
+//                        String catCurrent = alert.getCategory();
+//                        // User
+//                        String userCurrent = alert.getUserId();
+//
+//
+//                        double distance = AdminActivity.calcDistance(latFromList, lngFromList, latCurrent, lngCurrent);
+//                        boolean isTimeValid = AdminActivity.isTimeValid(tsFromList, tsCurrent);
+//                        boolean isCategoryValid = Objects.equals(catFromList, catCurrent);
+//                        boolean isDifferentUser = Objects.equals(userFromList, userCurrent);
+//
+//
+//                        if(distance < 0.9 && isTimeValid && isCategoryValid) {
+//
+//                            if(sameAlertCnt >= 6) {
+//                                fullList += "\n" + index + ": " + alert.getTitle() + " | Danger: 3";
+//                                alert.setDanger(3);
+//                                dataRef.child(dataSnapshot.getKey()).child("danger").setValue(alert.getDanger());
+//                            }
+//                            else if(sameAlertCnt >= 3 && sameAlertCnt <=5) {
+//                                fullList += "\n" + index + ": " + alert.getTitle() + " | Danger: 2";
+//                                alert.setDanger(2);
+//                                dataRef.child(dataSnapshot.getKey()).child("danger").setValue(alert.getDanger());
+//                            }
+//                            else {
+//                                fullList += "\n" + index + ": " + alert.getTitle() + " | Danger: 1";
+//                                alert.setDanger(1);
+//                                dataRef.child(dataSnapshot.getKey()).child("danger").setValue(alert.getDanger());
+//                            }
+//                            sameAlertCnt++;
+//                        }
+//
+//                        //Toast.makeText(LoginActivity.this, String.valueOf("Lat from snaps: " + latCurrent), Toast.LENGTH_SHORT).show();
+//                        //Toast.makeText(LoginActivity.this, String.valueOf(distance), Toast.LENGTH_SHORT).show();
+//
+//
+//                    }
+//                    sameAlertCnt = 1;
+//                    fullList += "\n";
+//                    index++;
+//                }
+//
+//
+//// !!!!!!!!!               showMessage(users.size() + "Near spots: " + userCnt, fullList);
+//            }
+//
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError error) {
+//
+//            }
+//        });
+
+
+
+
+
 
 
     }

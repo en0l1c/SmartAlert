@@ -10,6 +10,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import android.animation.TimeAnimator;
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.DialogInterface;
@@ -42,6 +43,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
@@ -51,6 +53,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 public class SubmitAlertActivity extends AppCompatActivity implements LocationListener {
 
@@ -87,6 +90,7 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
     private final int LOCATION_REQUEST_CODE = 123;
 
     ArrayList<String> users = new ArrayList<>();
+    static boolean canSubmit = false;
 
 
     @Override
@@ -218,117 +222,202 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
 
 
 
+
+
         // SUBMIT BUTTON
         submitAlertBtn.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View view) {
 
-//                canUserSubmitAlert();
-
-                if(!alertTitileET.getText().toString().equals("") &&
-                        !alertDescriptionET.getText().toString().equals("") &&
-                        !timestampTV.getText().toString().equals("") &&
-                        locationTV.getCurrentTextColor() != Color.RED &&
-                        locationTV.getCurrentTextColor() != Color.YELLOW &&
-                        !alertCategorySpinner.getSelectedItem().toString().equals("-")) {
-
-
-
-
-                            // with image
-                            if(imageUri != null) {
-                                uploadImage(); // firstly upload the image
-
-
-                                // continue to upload task from uploadImage() and get the downloadUrl of image
-                                // see here why i did this way:
-                                // https://stackoverflow.com/questions/68241801/why-cant-this-retieve-the-download-url-of-an-image-on-firebase-storage
-                                uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
-                                    @Override
-                                    public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
-                                        if(!task.isSuccessful()) {
-                                            throw task.getException();
-
-                                        }
-
-                                        return storageReference.getDownloadUrl();
-
-                                    }
-                                }).addOnCompleteListener(new OnCompleteListener<Uri>() {
-                                    @Override
-                                    public void onComplete(@NonNull Task<Uri> task) {
-                                        if(task.isSuccessful()) {
-                                            downloadUri = task.getResult();
-
-
-                                            if(mAuth.getUid() != null) {
-                                                writeNewAlertToDatabase(alertTitileET.getText().toString(),
-                                                        timestampTV.getText().toString(),
-                                                        locationTV.getText().toString(),
-                                                        alertDescriptionET.getText().toString(),
-                                                        alertCategorySpinner.getSelectedItem().toString(),
-                                                        downloadUri.toString(),
-                                                        forNullUserIdBug,
-                                                        lat,
-                                                        lng,
-                                                        0,
-                                                        false);
-                                            }
-                                            else {
-                                                Toast.makeText(SubmitAlertActivity.this, "this if is a test for null uid (with img)", Toast.LENGTH_SHORT).show();
-                                            }
-
-                                        }
-                                    }
-                                });
-
-
-
-                                Toast.makeText(SubmitAlertActivity.this, "succesfully wrote to db with img", Toast.LENGTH_SHORT).show();
-                            }
-
-                            // without image
-                            else {
-                                if(mAuth.getUid() != null) {
-                                    // without uploading image with
-                                    writeNewAlertToDatabase(alertTitileET.getText().toString(),
-                                            timestampTV.getText().toString(),
-                                            locationTV.getText().toString(),
-                                            alertDescriptionET.getText().toString(),
-                                            alertCategorySpinner.getSelectedItem().toString(),
-                                            "",
-                                            mAuth.getUid(),
-                                            lat,
-                                            lng,
-                                            0,
-                                            false);
-
-
-                                    Toast.makeText(SubmitAlertActivity.this, "succesfully wrote to db without img", Toast.LENGTH_SHORT).show();
-                                }
-                                else {
-                                    Toast.makeText(SubmitAlertActivity.this, "this if is a test for null uid (without img)", Toast.LENGTH_SHORT).show();
-                                }
-
-                            }
-
-
-                            startActivity(new Intent(SubmitAlertActivity.this, UserActivity.class));
-                            finish();
-
-                }else {
-                    Toast.makeText(getApplicationContext(), "Some info missing", Toast.LENGTH_SHORT).show();
+                if(alertCategorySpinner.getSelectedItem().equals("-")) {
+                    Toast.makeText(SubmitAlertActivity.this, "Please select the category", Toast.LENGTH_SHORT).show();
                 }
-
-
+                else {
+                    canUserSubmit(alertCategorySpinner.getSelectedItem().toString());
+                }
             }
 
         });
     }
 
+    // CHECK IF USER SUBMITTED AN ALERT OF SAME CATEGORY THAT HE IS TRYING TO SUBMIT WITHIN ONE HOUR
+    private void canUserSubmit(String currentlySelectedCategory) {
+
+        // Get a reference to the "ALERT" path in the Firebase Realtime Database
+        DatabaseReference alertsRef = FirebaseDatabase.getInstance().getReference().child("ALERT");
+
+        // Set up a ValueEventListener to retrieve the existing alerts
+        ValueEventListener alertsListener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                // Get the current timestamp in milliseconds
+                long currentTime = System.currentTimeMillis() / 1000;
+
+                // Initialize variables to keep track of the last submitted alert with the same category
+                long lastAlertTimestamp = 0;
+                String lastAlertId = "";
+                double lastAlertLat = 0;
+                double lastAlertLng = 0;
+
+                // Iterate over the alerts to check for duplicates
+                for (DataSnapshot alertSnapshot : dataSnapshot.getChildren()) {
+                    // Get the alert data
+                    String category = alertSnapshot.child("category").getValue(String.class);
+                    String userId = alertSnapshot.child("userId").getValue(String.class);
+                    long timestamp = alertSnapshot.child("timestamp").getValue(Long.class);
+                    double lat = alertSnapshot.child("lat").getValue(Double.class);
+                    double lng = alertSnapshot.child("lng").getValue(Double.class);
+
+                    // Check if the alert has the same category and userId submitted within the last hour
+                    if (category.equals(currentlySelectedCategory) && userId.equals(mAuth.getUid()) && currentTime - timestamp < 3600) {
+                        // Alert already exists, prevent user from submitting a new one
+                        // Display an error message or disable the submit button
+                        Toast.makeText(SubmitAlertActivity.this, "Please try again later.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    // Keep track of the latest alert with the same category submitted by the current user
+                    if (category.equals(currentlySelectedCategory) && userId.equals(mAuth.getUid()) && timestamp > lastAlertTimestamp) {
+                        lastAlertTimestamp = timestamp;
+                        lastAlertId = alertSnapshot.getKey();
+                        lastAlertLat = lat;
+                        lastAlertLng = lng;
+                    }
+                }
+
+                // Check if the last alert with the same category was submitted within the last hour
+                if (currentTime - lastAlertTimestamp < 3600) {
+                    // Check if the user is far away (1km) from their last submission
+                    Location lastLocation = new Location("");
+                    lastLocation.setLatitude(lastAlertLat);
+                    lastLocation.setLongitude(lastAlertLng);
+                    Location currentLocation = new Location("");
+                    currentLocation.setLatitude(lat);
+                    currentLocation.setLongitude(lng);
+                    float distance = currentLocation.distanceTo(lastLocation);
+                    if (distance < 1000) {
+                        // Alert already exists, prevent user from submitting a new one
+                        // Display an error message or disable the submit button
+                        Toast.makeText(SubmitAlertActivity.this, "Please try again later. you already submitted", Toast.LENGTH_SHORT).show();
+                        submitAlertBtn.setEnabled(false);
+                        return;
+                    }
+                }
+
+                // No duplicate alert found, allow user to submit a new one
+                submitAlertBtn.setEnabled(true);
+                submitNewAlert();
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                // Handle database errors
+            }
+        };
+
+        // Add the ValueEventListener to the alerts reference
+        alertsRef.addValueEventListener(alertsListener);
+    }
+
+    private void submitNewAlert() {
+        if(!alertTitileET.getText().toString().equals("") &&
+                !alertDescriptionET.getText().toString().equals("") &&
+                !timestampTV.getText().toString().equals("") &&
+                locationTV.getCurrentTextColor() != Color.RED &&
+                locationTV.getCurrentTextColor() != Color.YELLOW &&
+                !alertCategorySpinner.getSelectedItem().toString().equals("-")) {
+
+
+
+
+            // with image
+            if(imageUri != null) {
+                uploadImage(); // firstly upload the image
+
+
+                // continue to upload task from uploadImage() and get the downloadUrl of image
+                // see here why i did this way:
+                // https://stackoverflow.com/questions/68241801/why-cant-this-retieve-the-download-url-of-an-image-on-firebase-storage
+                uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+                    @Override
+                    public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
+                        if(!task.isSuccessful()) {
+                            throw task.getException();
+
+                        }
+
+                        return storageReference.getDownloadUrl();
+
+                    }
+                }).addOnCompleteListener(new OnCompleteListener<Uri>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Uri> task) {
+                        if(task.isSuccessful()) {
+                            downloadUri = task.getResult();
+
+
+                            if(mAuth.getUid() != null) {
+                                writeNewAlertToDatabase(alertTitileET.getText().toString(),
+                                        Integer.parseInt(timestampTV.getText().toString()),
+                                        locationTV.getText().toString(),
+                                        alertDescriptionET.getText().toString(),
+                                        alertCategorySpinner.getSelectedItem().toString(),
+                                        downloadUri.toString(),
+                                        forNullUserIdBug,
+                                        lat,
+                                        lng,
+                                        0,
+                                        false);
+                            }
+                            else {
+                                Toast.makeText(SubmitAlertActivity.this, "this if is a test for null uid (with img)", Toast.LENGTH_SHORT).show();
+                            }
+
+                        }
+                    }
+                });
+
+
+
+                Toast.makeText(SubmitAlertActivity.this, "succesfully wrote to db with img", Toast.LENGTH_SHORT).show();
+            }
+
+            // without image
+            else {
+                if(mAuth.getUid() != null) {
+                    // without uploading image with
+                    writeNewAlertToDatabase(alertTitileET.getText().toString(),
+                            Integer.parseInt(timestampTV.getText().toString()),
+                            locationTV.getText().toString(),
+                            alertDescriptionET.getText().toString(),
+                            alertCategorySpinner.getSelectedItem().toString(),
+                            "",
+                            mAuth.getUid(),
+                            lat,
+                            lng,
+                            0,
+                            false);
+
+
+                    Toast.makeText(SubmitAlertActivity.this, "succesfully wrote to db without img", Toast.LENGTH_SHORT).show();
+                }
+                else {
+                    Toast.makeText(SubmitAlertActivity.this, "this if is a test for null uid (without img)", Toast.LENGTH_SHORT).show();
+                }
+
+            }
+
+
+            startActivity(new Intent(SubmitAlertActivity.this, UserActivity.class));
+            finish();
+
+        }else {
+            Toast.makeText(getApplicationContext(), "Some info missing", Toast.LENGTH_SHORT).show();
+        }
+    }
     public void writeNewAlertToDatabase(String title,
-                                        String timestasmp,
+                                        int timestasmp,
                                         String location,
                                         String description,
                                         String category,
@@ -353,39 +442,6 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
         databaseReference.child(title).setValue(alert);
     }
 
-    private void canUserSubmitAlert() {
-        boolean canUserSubmit;
-        String uid = mAuth.getUid();
-        int timestampCurrent = (int) System.currentTimeMillis() / 1000; // current time
-
-
-        databaseReference.addListenerForSingleValueEvent(new ValueEventListener() {
-            int cnt = 0;
-            @Override
-            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                for(DataSnapshot dataSnapshot : snapshot.getChildren()) {
-                    Alert alert = snapshot.child(dataSnapshot.getKey()).getValue(Alert.class);
-
-                    if(uid.equals(alert.getUserId()))
-                    {
-
-                        cnt++;
-
-                    }
-
-                }
-                Toast.makeText(SubmitAlertActivity.this, cnt, Toast.LENGTH_SHORT).show();
-
-
-
-            }
-
-            @Override
-            public void onCancelled(@NonNull DatabaseError error) {
-
-            }
-        });
-    }
 
 
 
@@ -536,23 +592,9 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
         Toast.makeText(SubmitAlertActivity.this, "Download URL (out2): " + downloadUrl, Toast.LENGTH_SHORT).show();
 
 
-        // downloadUrl;
     }
 
 
-
-
-
-
-
-
-//    public void showMessage(String title, String message) {
-//        new android.app.AlertDialog.Builder(this)
-//                .setTitle(title)
-//                .setMessage(message)
-//                .setCancelable(true)
-//                .show();
-//    }
 
     @Override
     public void onBackPressed() {

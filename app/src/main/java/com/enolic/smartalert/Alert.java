@@ -1,8 +1,10 @@
 package com.enolic.smartalert;
 
+import java.util.Comparator;
+
 public class Alert {
     private String title;
-    private String timestamp;
+    private int timestamp;
     private String location;
     private String description;
     private String category;
@@ -19,7 +21,7 @@ public class Alert {
     }
 
     public Alert(String title,
-                 String timestasmp,
+                 int timestasmp,
                  String location,
                  String description,
                  String category,
@@ -63,7 +65,7 @@ public class Alert {
         return title;
     }
 
-    public String getTimestamp() {
+    public int getTimestamp() {
         return timestamp;
     }
 
@@ -94,6 +96,9 @@ public class Alert {
     public String getUserId() {
         return userId;
     }
+
+
+
 }
 
 
