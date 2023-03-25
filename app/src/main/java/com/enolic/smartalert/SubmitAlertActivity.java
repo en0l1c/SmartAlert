@@ -10,7 +10,6 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
-import android.animation.TimeAnimator;
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.DialogInterface;
@@ -22,6 +21,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -53,7 +53,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Locale;
-import java.util.function.Consumer;
 
 public class SubmitAlertActivity extends AppCompatActivity implements LocationListener {
 
@@ -73,7 +72,7 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
     UploadTask uploadTask;
     Uri imageUri;
     private String fileName; // image file name
-//    private SimpleDateFormat formatter;
+    //    private SimpleDateFormat formatter;
 //    private Date dateNow;
     String downloadUrl;
     Uri downloadUri;
@@ -83,6 +82,7 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
     double lng;
 
 
+    String uid;
     FirebaseAuth mAuth;
     FirebaseUser firebaseUser;
     FirebaseDatabase database;
@@ -90,7 +90,6 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
     private final int LOCATION_REQUEST_CODE = 123;
 
     ArrayList<String> users = new ArrayList<>();
-    static boolean canSubmit = false;
 
 
     @Override
@@ -119,8 +118,12 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
         timestampTV.setText(tsLong.toString());
 
 
-        mAuth = FirebaseAuth.getInstance();
-        forNullUserIdBug = mAuth.getUid();
+        mAuth = LoginActivity.mAuth;
+        uid = mAuth.getUid();
+//        mAuth = FirebaseAuth.getInstance();
+//        forNullUserIdBug = mAuth.getUid();
+
+
 
         database = FirebaseDatabase.getInstance();
         databaseReference = database.getReference("ALERT");
@@ -222,28 +225,57 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
 
 
 
-
-
         // SUBMIT BUTTON
         submitAlertBtn.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View view) {
 
-                if(alertCategorySpinner.getSelectedItem().equals("-")) {
-                    Toast.makeText(SubmitAlertActivity.this, "Please select the category", Toast.LENGTH_SHORT).show();
-                }
-                else {
-                    canUserSubmit(alertCategorySpinner.getSelectedItem().toString());
-                }
+
+//                if(alertCategorySpinner.getSelectedItem().equals("-")) {
+//                    Toast.makeText(SubmitAlertActivity.this, "Please select the category", Toast.LENGTH_SHORT).show();
+//                }
+//                else {
+//                    canUserSubmit(alertCategorySpinner.getSelectedItem().toString());
+//                }
+
+                canUserSubmit(alertCategorySpinner.getSelectedItem().toString(), new OnSubmitCheckListener() {
+                    @Override
+                    public void onSubmitCheck(boolean canSubmit) {
+                        // Handle the result of the submit check here
+                        if (canSubmit) {
+                            // User can submit the alert
+                            try {
+                                submitNewAlert();
+                                // put here the intents and not into submitNewAlert()
+//                                startActivity(new Intent(SubmitAlertActivity.this, UserActivity.class));
+//                                finish();
+                            } catch(Exception e) {
+
+                                Toast.makeText(SubmitAlertActivity.this, "EXCEPTION", Toast.LENGTH_SHORT).show();
+                            }
+
+                        } else {
+                            // User cannot submit the alert
+//                            if (mAuth != null) {
+//
+//                            }
+                            Toast.makeText(SubmitAlertActivity.this, "You have already submit an alert within 1 hour. Please try again later.", Toast.LENGTH_SHORT).show();
+
+
+                        }
+                    }
+                });
+
             }
 
         });
     }
 
-    // CHECK IF USER SUBMITTED AN ALERT OF SAME CATEGORY THAT HE IS TRYING TO SUBMIT WITHIN ONE HOUR
-    private void canUserSubmit(String currentlySelectedCategory) {
 
+
+    // CHECK IF USER SUBMITTED AN ALERT OF SAME CATEGORY THAT HE IS TRYING TO SUBMIT WITHIN ONE HOUR
+    private void canUserSubmit(String currentlySelectedCategory, OnSubmitCheckListener listener) {
         // Get a reference to the "ALERT" path in the Firebase Realtime Database
         DatabaseReference alertsRef = FirebaseDatabase.getInstance().getReference().child("ALERT");
 
@@ -260,6 +292,9 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
                 double lastAlertLat = 0;
                 double lastAlertLng = 0;
 
+                // Keep track of the latest alert with the same category submitted by the current user
+                DataSnapshot lastAlertSnapshot = null;
+
                 // Iterate over the alerts to check for duplicates
                 for (DataSnapshot alertSnapshot : dataSnapshot.getChildren()) {
                     // Get the alert data
@@ -270,25 +305,28 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
                     double lng = alertSnapshot.child("lng").getValue(Double.class);
 
                     // Check if the alert has the same category and userId submitted within the last hour
-                    if (category.equals(currentlySelectedCategory) && userId.equals(mAuth.getUid()) && currentTime - timestamp < 3600) {
+                    if (category.equals(currentlySelectedCategory) && userId.equals(uid) && currentTime - timestamp < 3600) {
                         // Alert already exists, prevent user from submitting a new one
                         // Display an error message or disable the submit button
-                        Toast.makeText(SubmitAlertActivity.this, "Please try again later.", Toast.LENGTH_SHORT).show();
+                        listener.onSubmitCheck(false);
                         return;
                     }
 
                     // Keep track of the latest alert with the same category submitted by the current user
-                    if (category.equals(currentlySelectedCategory) && userId.equals(mAuth.getUid()) && timestamp > lastAlertTimestamp) {
+                    if (category.equals(currentlySelectedCategory) && userId.equals(uid) && timestamp > lastAlertTimestamp) {
                         lastAlertTimestamp = timestamp;
                         lastAlertId = alertSnapshot.getKey();
                         lastAlertLat = lat;
                         lastAlertLng = lng;
+                        lastAlertSnapshot = alertSnapshot;
                     }
                 }
 
                 // Check if the last alert with the same category was submitted within the last hour
-                if (currentTime - lastAlertTimestamp < 3600) {
+                if (lastAlertSnapshot != null && currentTime - lastAlertTimestamp < 3600) {
                     // Check if the user is far away (1km) from their last submission
+                     lastAlertLat = lastAlertSnapshot.child("lat").getValue(Double.class);
+                     lastAlertLng = lastAlertSnapshot.child("lng").getValue(Double.class);
                     Location lastLocation = new Location("");
                     lastLocation.setLatitude(lastAlertLat);
                     lastLocation.setLongitude(lastAlertLng);
@@ -299,15 +337,13 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
                     if (distance < 1000) {
                         // Alert already exists, prevent user from submitting a new one
                         // Display an error message or disable the submit button
-                        Toast.makeText(SubmitAlertActivity.this, "Please try again later. you already submitted", Toast.LENGTH_SHORT).show();
-                        submitAlertBtn.setEnabled(false);
+                        listener.onSubmitCheck(false);
                         return;
                     }
                 }
 
                 // No duplicate alert found, allow user to submit a new one
-                submitAlertBtn.setEnabled(true);
-                submitNewAlert();
+                listener.onSubmitCheck(true);
             }
 
             @Override
@@ -317,8 +353,89 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
         };
 
         // Add the ValueEventListener to the alerts reference
-        alertsRef.addValueEventListener(alertsListener);
+        alertsRef.orderByChild("category").equalTo(currentlySelectedCategory).addListenerForSingleValueEvent(alertsListener);
+
+
+
+
+
+//        // Get a reference to the "ALERT" path in the Firebase Realtime Database
+//        DatabaseReference alertsRef = FirebaseDatabase.getInstance().getReference().child("ALERT");
+//
+//        // Set up a ValueEventListener to retrieve the existing alerts
+//        ValueEventListener alertsListener = new ValueEventListener() {
+//            @Override
+//            public void onDataChange(DataSnapshot dataSnapshot) {
+//                // Get the current timestamp in milliseconds
+//                long currentTime = System.currentTimeMillis() / 1000;
+//
+//                // Initialize variables to keep track of the last submitted alert with the same category
+//                long lastAlertTimestamp = 0;
+//                String lastAlertId = "";
+//                double lastAlertLat = 0;
+//                double lastAlertLng = 0;
+//
+//                // Iterate over the alerts to check for duplicates
+//                for (DataSnapshot alertSnapshot : dataSnapshot.getChildren()) {
+//                    // Get the alert data
+//                    String category = alertSnapshot.child("category").getValue(String.class);
+//                    String userId = alertSnapshot.child("userId").getValue(String.class);
+//                    long timestamp = alertSnapshot.child("timestamp").getValue(Long.class);
+//                    double lat = alertSnapshot.child("lat").getValue(Double.class);
+//                    double lng = alertSnapshot.child("lng").getValue(Double.class);
+//
+//                    // Check if the alert has the same category and userId submitted within the last hour
+//                    if (category.equals(currentlySelectedCategory) && userId.equals(uid) && currentTime - timestamp < 3600) {
+//                        // Alert already exists, prevent user from submitting a new one
+//                        // Display an error message or disable the submit button
+////                        Toast.makeText(SubmitAlertActivity.this, "Please try again later.", Toast.LENGTH_SHORT).show();
+//                        listener.onSubmitCheck(false);
+//                        return;
+//                    }
+//
+//                    // Keep track of the latest alert with the same category submitted by the current user
+//                    if (category.equals(currentlySelectedCategory) && userId.equals(uid) && timestamp > lastAlertTimestamp) {
+//                        lastAlertTimestamp = timestamp;
+//                        lastAlertId = alertSnapshot.getKey();
+//                        lastAlertLat = lat;
+//                        lastAlertLng = lng;
+//                    }
+//                }
+//
+//                // Check if the last alert with the same category was submitted within the last hour
+//                if (currentTime - lastAlertTimestamp < 3600) {
+//                    // Check if the user is far away (1km) from their last submission
+//                    Location lastLocation = new Location("");
+//                    lastLocation.setLatitude(lastAlertLat);
+//                    lastLocation.setLongitude(lastAlertLng);
+//                    Location currentLocation = new Location("");
+//                    currentLocation.setLatitude(lat);
+//                    currentLocation.setLongitude(lng);
+//                    float distance = currentLocation.distanceTo(lastLocation);
+//                    if (distance < 1000) {
+//                        // Alert already exists, prevent user from submitting a new one
+//                        // Display an error message or disable the submit button
+////                        Toast.makeText(SubmitAlertActivity.this, "Please try again later. you already submitted", Toast.LENGTH_SHORT).show();
+//                        listener.onSubmitCheck(false);
+//                        return;
+//                    }
+//                }
+//
+//                // No duplicate alert found, allow user to submit a new one
+//                listener.onSubmitCheck(true);
+//            }
+//
+//            @Override
+//            public void onCancelled(DatabaseError databaseError) {
+//                // Handle database errors
+//            }
+//        };
+//
+//        // Add the ValueEventListener to the alerts reference
+//        alertsRef.addValueEventListener(alertsListener);
     }
+
+
 
     private void submitNewAlert() {
         if(!alertTitileET.getText().toString().equals("") &&
@@ -357,14 +474,14 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
                             downloadUri = task.getResult();
 
 
-                            if(mAuth.getUid() != null) {
+                            if(uid != null) {
                                 writeNewAlertToDatabase(alertTitileET.getText().toString(),
                                         Integer.parseInt(timestampTV.getText().toString()),
                                         locationTV.getText().toString(),
                                         alertDescriptionET.getText().toString(),
                                         alertCategorySpinner.getSelectedItem().toString(),
                                         downloadUri.toString(),
-                                        forNullUserIdBug,
+                                        uid,
                                         lat,
                                         lng,
                                         0,
@@ -385,7 +502,7 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
 
             // without image
             else {
-                if(mAuth.getUid() != null) {
+                if(uid != null) {
                     // without uploading image with
                     writeNewAlertToDatabase(alertTitileET.getText().toString(),
                             Integer.parseInt(timestampTV.getText().toString()),
@@ -393,7 +510,7 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
                             alertDescriptionET.getText().toString(),
                             alertCategorySpinner.getSelectedItem().toString(),
                             "",
-                            mAuth.getUid(),
+                            uid,
                             lat,
                             lng,
                             0,
@@ -409,11 +526,11 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
             }
 
 
+
             startActivity(new Intent(SubmitAlertActivity.this, UserActivity.class));
             finish();
-
         }else {
-            Toast.makeText(getApplicationContext(), "Some info missing", Toast.LENGTH_SHORT).show();
+//            Toast.makeText(getApplicationContext(), "Some info missing", Toast.LENGTH_SHORT).show();
         }
     }
     public void writeNewAlertToDatabase(String title,
@@ -443,9 +560,6 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
     }
 
 
-
-
-
     // otan kleisei to parathyro pou zitaei to permission apo ton xristi tote tha treksei o kodikas tis onRequestPermissionResult
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -465,7 +579,7 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
         lat = location.getLatitude();
         lng = location.getLongitude();
         // set gps location at onCreate of activity
-        locationTV.setText(location.getLatitude() + "," + location.getLongitude());
+        locationTV.setText(location.getLatitude() + ", " + location.getLongitude());
         locationTV.setTextColor(Color.GREEN);
 
         locationManager.removeUpdates(this); // this stops the requestLocationUpdates
@@ -523,7 +637,7 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
                 else {
                     Toast.makeText(SubmitAlertActivity.this, "there is no image selected", Toast.LENGTH_SHORT).show();
                 }
-                
+
 
             }
         }
@@ -592,9 +706,23 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
         Toast.makeText(SubmitAlertActivity.this, "Download URL (out2): " + downloadUrl, Toast.LENGTH_SHORT).show();
 
 
+        // downloadUrl;
     }
 
 
+
+
+
+
+
+
+    public void showMessage(String title, String message) {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setCancelable(true)
+                .show();
+    }
 
     @Override
     public void onBackPressed() {
@@ -605,7 +733,7 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
         if(!alertTitileET.getText().toString().equals("") ||
                 !alertDescriptionET.getText().toString().equals("") ||
                 !alertCategorySpinner.getSelectedItem().toString().equals("-")
-                )
+        )
         {
 
             new AlertDialog.Builder(this)
@@ -635,9 +763,6 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
     }
 
 }
-
-
-
 
 
 

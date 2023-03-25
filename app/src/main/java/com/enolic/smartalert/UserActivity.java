@@ -23,7 +23,7 @@ import com.google.firebase.auth.FirebaseUser;
 public class UserActivity extends AppCompatActivity {
 
     Button signOutButton;
-    FirebaseAuth mAuth;
+    static FirebaseAuth mAuth;
     
     TextView fullnameTS;
     FirebaseUser user;
@@ -39,8 +39,10 @@ public class UserActivity extends AppCompatActivity {
         fullnameTS = findViewById(R.id.fullnameTV);
         submitNewAlertBtn = findViewById(R.id.submitAlertBtn);
 
-        mAuth = FirebaseAuth.getInstance();
+//        mAuth = FirebaseAuth.getInstance();
+        mAuth = LoginActivity.mAuth;
         user = mAuth.getCurrentUser();
+
 
 
         if (user != null) {
@@ -52,12 +54,14 @@ public class UserActivity extends AppCompatActivity {
 
 
 
+
         // SIGN OUT BUTTON
         signOutButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                // TODO: check why it needs check for null. because when i submit an alert on SubmitAlertActivity and went back to UserActivity if i press to sign out to go to LoginActivity, app take me back to UserActivity without a logical reason
                 mAuth.signOut();
-                Toast.makeText(UserActivity.this, "You signed out from UserActivity", Toast.LENGTH_SHORT).show();
+//                Toast.makeText(UserActivity.this, "You signed out from UserActivity", Toast.LENGTH_SHORT).show();
                 startActivity(new Intent(UserActivity.this, LoginActivity.class));
                 finish();
             }
@@ -68,7 +72,7 @@ public class UserActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 startActivity(new Intent(UserActivity.this, SubmitAlertActivity.class));
-                finish();
+
             }
         });
 
@@ -90,7 +94,7 @@ public class UserActivity extends AppCompatActivity {
                         // The user wants to leave - so dismiss the dialog and exit
                         dialog.dismiss();
                         mAuth.signOut();
-                        Toast.makeText(UserActivity.this, "You signed out from UserActivity", Toast.LENGTH_SHORT).show();
+//                        Toast.makeText(UserActivity.this, "You signed out from UserActivity", Toast.LENGTH_SHORT).show();
                         startActivity(new Intent(UserActivity.this, LoginActivity.class));
                         finish();
 

@@ -38,11 +38,13 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.StorageReference;
 import com.squareup.picasso.Picasso;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 
 public class AdminActivity extends AppCompatActivity {
 
@@ -78,7 +80,7 @@ public class AdminActivity extends AppCompatActivity {
 
         listView = findViewById(R.id.listView);
 
-        mAuth = FirebaseAuth.getInstance();
+        mAuth = LoginActivity.mAuth;
         //database = FirebaseDatabase.getInstance();
         //databaseReference = database.getReference("ALERTS");
 
@@ -380,6 +382,7 @@ public class AdminActivity extends AppCompatActivity {
                 }
                 else if(danger == 3)  {
                     convertView.setBackgroundColor(Color.YELLOW);
+                    titleTextView.setTextColor(Color.BLACK); // check to set the right color for dark or light theme
                 } else {
                     convertView.setBackgroundColor(Color.TRANSPARENT); // Set the background color to transparent for non-verified alerts
                 }
@@ -522,22 +525,39 @@ public class AdminActivity extends AppCompatActivity {
 //        });
 
 
+        // CONVERT UNIX TIMESTAMP TO REAL TIME
+        // convert timestamp from seconds to millis
+        int timestampSeconds = timestamp* 1000;
+        Date date = new Date(timestampSeconds);
+        SimpleDateFormat sdf = new java.text.SimpleDateFormat("HH:mm:ss yyyy-MM-dd z");
+        sdf.setTimeZone(TimeZone.getDefault());
+        String formattedDate = sdf.format(date);
+
+        // check if image is null and write it to dialog message
+        String isImageNull = "";
+        if(image.equals("")) {
+            isImageNull = "null";
+        }
 
 //        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this);
         builder.setTitle(title)
-        .setMessage("Time: " + new Date(timestamp) +
+        .setMessage("Time: " + formattedDate +
                 "\nCategory: " + category +
                 "\nDescription: " + description +
                 "\nLocation: " + location +
                 "\nTimestamp: " + timestamp +
                 "\nUID: " + userId +
-                "\nLatitude: " + lat +
-                "\nLongtitude: " + lng +
                 "\nDanger Level: " + dangerLevel +
                 "\nIs verified: " + isVerified +
-                "\nImage: ")
+                "\nImage: " + isImageNull)
         .setCancelable(true)
         .setView(imgView)
+        .setNeutralButton("Neutral button default text", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+
+            }
+        })
         .setNegativeButton("BACK", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
@@ -551,12 +571,7 @@ public class AdminActivity extends AppCompatActivity {
                 adapter.notifyDataSetChanged();
                 addDataToList();
             }
-        }).setNeutralButton("Neutral button default text", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-
-                    }
-                });
+        });
 
         AlertDialog dialog = builder.create();
         dialog.show();
@@ -587,7 +602,11 @@ public class AdminActivity extends AppCompatActivity {
             neutralButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    alertSnapshot.getRef().child("verified").setValue(true);
+                    Alert alert = alertSnapshot.getValue(Alert.class);
+                    alert.setVerified(true);
+                    alertSnapshot.getRef().setValue(alert);
+                    // alertSnapshot.getRef().child("verified").setValue(true); <-- instead of using Alert.class
+
                     selectedView.setBackgroundColor(Color.RED);
                     dialog.dismiss();
 
@@ -595,23 +614,6 @@ public class AdminActivity extends AppCompatActivity {
                 }
             });
         }
-//        builder.setNeutralButton(neutralBtnText, new DialogInterface.OnClickListener() {
-//            @Override
-//            public void onClick(DialogInterface dialogInterface, int i) {
-//
-//                alertSnapshot.getRef().child("verified").setValue(true);
-//                selectedView.setBackgroundColor(Color.RED);
-////                        dataSnapshot.child(selectedListItem).getRef().child("verified").setValue(alert.isVerified() );
-//
-////                        alert.setVerified(true);
-////                        databaseReference.child(selectedListItem).child("verified").setValue(alert.isVerified());
-//
-////                        listView.getChildAt(position).setBackgroundColor(Color.RED);
-//
-//                findNearbyUsers();
-//            }
-//        });
-
 
 
 
@@ -666,18 +668,7 @@ public class AdminActivity extends AppCompatActivity {
             }
         });
     }
-//    public void showMessage(String title, String message) {
-//        new android.app.AlertDialog.Builder(this)
-//                .setTitle(title)
-//                .setMessage(message)
-//                .setCancelable(true)
-//                .setNegativeButton("OK", new DialogInterface.OnClickListener() {
-//                    @Override
-//                    public void onClick(DialogInterface dialogInterface, int i) {
-//                    }
-//                })
-//                .show();
-//    }
+
 
 
     @Override

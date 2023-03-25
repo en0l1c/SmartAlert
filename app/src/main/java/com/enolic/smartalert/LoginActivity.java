@@ -9,7 +9,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.location.Location;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -23,18 +22,10 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 
 public class LoginActivity extends AppCompatActivity {
     Alert alert;
@@ -42,8 +33,8 @@ public class LoginActivity extends AppCompatActivity {
     EditText passwordET;
     public static String uid;
 
-    FirebaseAuth mAuth;
-    FirebaseUser user;
+    static FirebaseAuth mAuth;
+    static FirebaseUser user;
     FirebaseDatabase database;
     DatabaseReference referece;
     DatabaseReference roleReference;
@@ -79,8 +70,15 @@ public class LoginActivity extends AppCompatActivity {
         passwordET = findViewById(R.id.passwordET);
 
 
+//        if(mAuth != null) {
+//            mAuth.signOut(); // signout first to make sure that authentication system is secure, because we are at onCreate of login activity.
+//
+//        }
+
+
         mAuth = FirebaseAuth.getInstance();
-        uid = mAuth.getUid();
+
+//        uid = mAuth.getUid();
 
         compareAlerts();
         //compareAlertsLogin();
@@ -100,69 +98,15 @@ public class LoginActivity extends AppCompatActivity {
                     intent.putExtra("PASSWORD_KEY", passwordET.getText().toString());
                 }
                 startActivity(intent);
-                finish();
+//                finish();
             }
         });
 
         signInButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                user = mAuth.getCurrentUser();
-                // PUT IT IN A TRY-CATCH IF THE EDITTEXTS ARE NULL
-                try {
-                    mAuth.signInWithEmailAndPassword(emailET.getText().toString(), passwordET.getText().toString())
-                            .addOnCompleteListener((task) -> { // with lambda expression
-                                // to ti exei sumbei, an exei ginei kapoio lathos kata tin eisagwgi twn stoixeiwn vrisketai entos tou task
-                                if (task.isSuccessful()) {
-                                    roleReference = database.getReference().child("USER").child(mAuth.getUid()).child("role");
-                                    roleReference.addValueEventListener(new ValueEventListener() {
-                                        @Override
-                                        public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                            try {
-                                                String userRole = snapshot.getValue().toString();
 
-                                                if(userRole.equals("admin")) {
-//                                                    // Clear the edit texts
-//                                                    emailET.getText().clear();
-//                                                    passwordET.getText().clear();
-
-                                                    startActivity(new Intent(LoginActivity.this, AdminActivity.class));
-                                                    finish();
-                                                    Toast.makeText(LoginActivity.this, "Admin authenticated", Toast.LENGTH_SHORT).show();                                                }
-                                                else {
-
-//                                                    emailET.getText().clear();
-//                                                    passwordET.getText().clear();
-
-                                                    startActivity(new Intent(LoginActivity.this, UserActivity.class));
-                                                    finish();
-                                                    Toast.makeText(LoginActivity.this, "User authenticated", Toast.LENGTH_SHORT).show();
-                                                }
-                                            }
-                                            catch(Exception e) {
-                                                Toast.makeText(LoginActivity.this, e.toString(), Toast.LENGTH_SHORT).show();
-                                            }
-                                        }
-
-                                        @Override
-                                        public void onCancelled(@NonNull DatabaseError error) {
-                                            Toast.makeText(getApplicationContext(), error.toString(), Toast.LENGTH_SHORT).show();
-
-                                        }
-                                    });
-
-
-
-                                } else {
-                                    // den egine me epituxia
-                                    showMessage("Error", task.getException().getLocalizedMessage()); // epistrefetai to localized message oxi to exception. an epestrefai to exception tha itan epikinduno gia keno asfaleias
-                                }
-
-                            });
-                }
-                catch (Exception e) {
-                    showMessage("Error", "Fill carefully the fields");
-                }
+                singInTheUser();
 //                if(user != null) {
 //
 //                }
@@ -177,6 +121,61 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
+    private void singInTheUser() {
+        user = mAuth.getCurrentUser();
+        // PUT IT IN A TRY-CATCH IF THE EDITTEXTS ARE NULL
+        try {
+            mAuth.signInWithEmailAndPassword(emailET.getText().toString(), passwordET.getText().toString())
+                    .addOnCompleteListener((task) -> { // with lambda expression
+                        // to ti exei sumbei, an exei ginei kapoio lathos kata tin eisagwgi twn stoixeiwn vrisketai entos tou task
+                        if (task.isSuccessful()) {
+                            roleReference = database.getReference().child("USER").child(mAuth.getUid()).child("role");
+                            roleReference.addValueEventListener(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                    try {
+                                        String userRole = snapshot.getValue().toString();
+
+                                        if(userRole.equals("admin")) {
+
+                                            startActivity(new Intent(LoginActivity.this, AdminActivity.class));
+                                            finish();
+                                            Toast.makeText(LoginActivity.this, "Admin authenticated", Toast.LENGTH_SHORT).show();                                                }
+                                        else {
+
+//                                                    emailET.getText().clear();
+//                                                    passwordET.getText().clear();
+
+                                            startActivity(new Intent(LoginActivity.this, UserActivity.class));
+                                            finish();
+                                            Toast.makeText(LoginActivity.this, "User authenticated", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                    catch(Exception e) {
+                                        Toast.makeText(LoginActivity.this, e.toString(), Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+
+                                @Override
+                                public void onCancelled(@NonNull DatabaseError error) {
+                                    Toast.makeText(getApplicationContext(), error.toString(), Toast.LENGTH_SHORT).show();
+
+                                }
+                            });
+
+
+
+                        } else {
+                            // den egine me epituxia
+                            showMessage("Error", task.getException().getLocalizedMessage()); // epistrefetai to localized message oxi to exception. an epestrefai to exception tha itan epikinduno gia keno asfaleias
+                        }
+
+                    });
+        }
+        catch (Exception e) {
+            showMessage("Error", "Fill carefully the fields");
+        }
+    }
     private void saveLanguage(String lang) {
 
 
@@ -264,16 +263,7 @@ public class LoginActivity extends AppCompatActivity {
                 }).show();
 
     }
-//    View.OnClickListener listener = new View.OnClickListener() {
-//        @Override
-//        public void onClick(View view) {
-//            // sign in button
-//            if(view == signInButton) {
-//                Toast.makeText(getApplicationContext(), "success", Toast.LENGTH_SHORT).show();
-//                showMessage("Success", "onclick outside of the oncreate");
-//            }
-//        }
-//    };
+
 
 
     private void passValuesToLists() {
