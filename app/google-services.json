@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "23318106282",
+    "firebase_url": "https://smartalert-1337-default-rtdb.firebaseio.com",
     "project_id": "smartalert-1337",
     "storage_bucket": "smartalert-1337.appspot.com"
   },

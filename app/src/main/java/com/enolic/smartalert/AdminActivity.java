@@ -5,20 +5,30 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.NotificationCompat;
 
 
+import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.location.Location;
 import android.net.Uri;
+import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.textclassifier.ConversationActions;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -28,23 +38,71 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.functions.FirebaseFunctions;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.RemoteMessage;
+
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import com.google.firebase.storage.StorageReference;
+import androidx.core.app.NotificationCompat;
+
+
+import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 import java.util.TimeZone;
+import java.util.UUID;
+import java.util.function.Consumer;
+
+import okhttp3.Call;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class AdminActivity extends AppCompatActivity {
 
@@ -64,6 +122,7 @@ public class AdminActivity extends AppCompatActivity {
     private List<DataSnapshot> alerts = new ArrayList<>();
     ArrayAdapter<DataSnapshot> adapter;
 
+
     int listViewSelectedItem;
 
     Alert alert;
@@ -71,7 +130,16 @@ public class AdminActivity extends AppCompatActivity {
 
     //String timestampLast = "0";
     //String timestampCurrent;
+    final static String SERVER_KEY = "AAAABW3eEKo:APA91bFvt_1oQKD6L3zNTiD6t6S-w-qqCwouOy_6g-3Vnrq53QE9ifvWMADbXuQOLiuHi6AQIEF1KD4ObL7sAQTjYkGfhbi_uETnhiDtlq7WUsply4b_aiSLtS53BQR0tCxtZ1B3zNET";
 
+    final private String FCM_API = "https://fcm.googleapis.com/fcm/send";
+    final private String serverKey = SERVER_KEY;
+    final private String contentType = "application/json";
+    final String TAG = "NOTIFICATION TAG";
+
+    String NOTIFICATION_TITLE;
+    String NOTIFICATION_MESSAGE;
+    String TOPIC;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,6 +159,56 @@ public class AdminActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
 
+
+        // Initialize Firebase
+//        FirebaseApp.initializeApp(AdminActivity.this);
+        database = FirebaseDatabase.getInstance();
+
+
+
+
+//        DatabaseReference alertsRef = database.getReference("ALERT");
+//        DatabaseReference usersRef = database.getReference("USER");
+//
+//        // Listen for new alerts
+//        alertsRef.addChildEventListener(new ChildEventListener() {
+//            @Override
+//            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+//                // Check if alert is verified
+//                if (dataSnapshot.child("verified").getValue(Boolean.class)) {
+//                    String alertId = dataSnapshot.getKey();
+//
+//                    // Find nearby users and send notifications
+//                    findNearbyUsers(alertId);
+//                }
+//            }
+//
+//            @Override
+//            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+//
+//            }
+//
+//            @Override
+//            public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+//
+//            }
+//
+//            @Override
+//            public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+//
+//            }
+//
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError error) {
+//
+//            }
+//
+//            // Other ChildEventListener methods
+//            // ...
+//        });
+
+        // Set up notification channels
+//        createNotificationChannels();
 
 //        adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, list);
 //
@@ -299,7 +417,7 @@ public class AdminActivity extends AppCompatActivity {
 
 // Retrieve the data from the database and sort the list of alerts
         DatabaseReference alertRef = FirebaseDatabase.getInstance().getReference().child("ALERT");
-        alertRef.addValueEventListener(new ValueEventListener() {
+        alertRef.orderByChild("danger").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 alerts.clear();
@@ -309,11 +427,12 @@ public class AdminActivity extends AppCompatActivity {
                     boolean verified = alert.isVerified();
                     int dangerLevel = alert.getDanger();
                     long timestamp = alert.getTimestamp();
-                    if (verified) {
-                        // Add the verified alert to the front of the list
-                        alerts.add(0, alertSnapshot);
-                    } else if (dangerLevel == 3) {
-                        // Add the alert to the list if it has danger level 3
+//                    if (verified) {
+//                        // Add the verified alert to the front of the list
+//                        alerts.add(0, alertSnapshot);
+//                    } else
+                    if (dangerLevel == 3) {
+                    // Add the alert to the list if it has danger level 3
                         int index = alerts.size();
                         for (int i = 0; i < alerts.size(); i++) {
                             int danger = alerts.get(i).child("danger").getValue(Integer.class);
@@ -385,6 +504,8 @@ public class AdminActivity extends AppCompatActivity {
                     titleTextView.setTextColor(Color.BLACK); // check to set the right color for dark or light theme
                 } else {
                     convertView.setBackgroundColor(Color.TRANSPARENT); // Set the background color to transparent for non-verified alerts
+                    titleTextView.setTextColor(Color.WHITE); // check to set the right color for dark or light theme
+
                 }
                 titleTextView.setText(title);
                 return convertView;
@@ -586,7 +707,18 @@ public class AdminActivity extends AppCompatActivity {
             neutralButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    alertSnapshot.getRef().child("verified").setValue(false);
+                    // Define the alert
+                    Alert alert = alertSnapshot.getValue(Alert.class);
+
+                    // Set verified of the alert to false
+                    alert.setVerified(false);
+                    // Set the danger Level to 1
+                    alert.setDanger(1);
+                    // Save the alert
+                    alertSnapshot.getRef().setValue(alert);
+
+//                    alertSnapshot.getRef().child("verified").setValue(false);
+
                     selectedView.setBackgroundColor(Color.TRANSPARENT);
                     dialog.dismiss();
 
@@ -602,72 +734,481 @@ public class AdminActivity extends AppCompatActivity {
             neutralButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
+                    // Define the alert
                     Alert alert = alertSnapshot.getValue(Alert.class);
+
+                    // Set verified to true
                     alert.setVerified(true);
+                    // Set danger level to 3
+                    alert.setDanger(3);
+
+                    //Save the alert
                     alertSnapshot.getRef().setValue(alert);
+
                     // alertSnapshot.getRef().child("verified").setValue(true); <-- instead of using Alert.class
 
                     selectedView.setBackgroundColor(Color.RED);
                     dialog.dismiss();
 
-                    findNearbyUsers();
+
+
+                    findNearbyUsers(alert);
                 }
             });
         }
-
-
-
     }
 
-    private void findNearbyUsers() {
-        database = FirebaseDatabase.getInstance();
-        DatabaseReference alertsRef = database.getReference("ALERT");
+
+
+    private void findNearbyUsers(Alert alert) {
+        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference().child("USER");
+
+        usersRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                Set<String> nearbyFcmTokens = new HashSet<>();
+
+                for (DataSnapshot userSnapshot : snapshot.getChildren()) {
+                    double userLat = userSnapshot.child("lat").getValue(Double.class);
+                    double userLng = userSnapshot.child("lng").getValue(Double.class);
+                    String userToken = userSnapshot.child("fcmToken").getValue(String.class);
+                    // Calculate the distance between the user and the alert
+                    float[] results = new float[1];
+                    Location.distanceBetween(alert.getLat(), alert.getLng(), userLat, userLng, results);
+
+                    // Check if the user is nearby (within 1 kilometer)
+                    if (results[0] <= 1000) {
+                        nearbyFcmTokens.add(userToken);
+                    }
+                }
+
+                // Send push notifications to all nearby users
+                sendNotificationToUsers(nearbyFcmTokens, alert.getTitle(), alert.getDescription());
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Log.e("LoG", "Failed to read value.", error.toException());
+            }
+        });
+    }
+
+    private void sendNotificationToUsers(Set<String> tokens, String title, String message) {
+        // Create the notification channel
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel("CHANNEL_ID", "Channel Name", NotificationManager.IMPORTANCE_HIGH);
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(channel);
+        }
+
+        // Build the notification message
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "CHANNEL_ID")
+                .setSmallIcon(R.drawable.ic_launcher_background)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true);
+
+        // Create the intent to open the app when the user taps on the notification
+        Intent intent = new Intent(this, AdminActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+        builder.setContentIntent(pendingIntent);
+
+        // Send the notification to each nearby user on a background thread
+        new Thread(() -> {
+            for (String token : tokens) {
+                if (token == null || token.isEmpty()) {
+                    return;
+                }
+
+                Log.d("FCM", "Sending notification to FCM token(sendMessage): " + token);
+                Log.d("FCM", "Notification title: " + title);
+                Log.d("FCM", "Notification message: " + message);
+
+                // Create the payload data for the Firebase Cloud Function
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("title", title);
+                payload.put("message", message);
+                payload.put("token", token);
+
+
+
+                // Call the Firebase Cloud Function to send the push notification
+                FirebaseFunctions.getInstance()
+                        .getHttpsCallable("sendNotificationToUser")
+                        .call(payload)
+                        .addOnCompleteListener(task -> {
+                            if (task.isSuccessful()) {
+                                Object result = task.getResult().getData();
+                                if (result instanceof String) {
+                                    Log.d("FCM", "Response string: " + result.toString());
+                                } else if (result instanceof JSONObject) {
+                                    try {
+                                        JSONObject json = new JSONObject(result.toString());
+                                        if (json.has("success") && json.getBoolean("success")) {
+                                            Log.d("FCM", "Notification sent successfully to FCM token: " + token);
+                                        } else {
+                                            Log.e("FCM", "Error sending notification to FCM token: " + token + ", message: " + json.optString("message"));
+                                        }
+                                    } catch (JSONException e) {
+                                        Log.e("FCM", "Error parsing JSON response: " + result.toString(), e);
+                                    }
+                                }
+                            } else {
+                                Log.e("FCM", "Error sending notification to FCM token: " + token, task.getException());
+                            }
+                        });
+            }
+        }).start();
+    }
+
+//    private void findNearbyUsers(Alert alert) {
+//        DatabaseReference usersRef = FirebaseDatabase.getInstance().getReference().child("USER");
+//
+//        usersRef.addListenerForSingleValueEvent(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(@NonNull DataSnapshot snapshot) {
+//                Set<String> nearbyFcmTokens = new HashSet<>();
+//
+//                for (DataSnapshot userSnapshot : snapshot.getChildren()) {
+//                    double userLat = userSnapshot.child("lat").getValue(Double.class);
+//                    double userLng = userSnapshot.child("lng").getValue(Double.class);
+//                    String userToken = userSnapshot.child("fcmToken").getValue(String.class);
+//                    // Calculate the distance between the user and the alert
+//                    float[] results = new float[1];
+//                    Location.distanceBetween(alert.getLat(), alert.getLng(), userLat, userLng, results);
+//
+//                    // Check if the user is nearby (within 1 kilometer)
+//                    if (results[0] <= 1000) {
+//                        nearbyFcmTokens.add(userToken);
+//                    }
+//                }
+//
+//                // Send push notifications to all nearby users
+//                sendNotificationToUsers(nearbyFcmTokens, alert);
+//            }
+//
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError error) {
+//                Log.e("LoG", "Failed to read value.", error.toException());
+//            }
+//        });
+//    }
+//
+//    private void sendNotificationToUsers(Set<String> tokens, Alert alert) {
+//        // Create the notification channel
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            NotificationChannel channel = new NotificationChannel("CHANNEL_ID", "Channel Name", NotificationManager.IMPORTANCE_HIGH);
+//            NotificationManager manager = getSystemService(NotificationManager.class);
+//            manager.createNotificationChannel(channel);
+//        }
+//
+//        // Build the notification message
+//        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "CHANNEL_ID")
+//                .setSmallIcon(R.drawable.ic_launcher_background)
+//                .setContentTitle("Alert nearby!")
+//                .setContentText("An alert has been verified near your location.")
+//                .setPriority(NotificationCompat.PRIORITY_HIGH)
+//                .setAutoCancel(true);
+//
+//        // Create the intent to open the app when the user taps on the notification
+//        Intent intent = new Intent(this, AdminActivity.class);
+//        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+//        builder.setContentIntent(pendingIntent);
+//
+//        // Send the notification to each nearby user on a background thread
+//        new Thread(() -> {
+//            for (String token : tokens) {
+//                if (token == null || token.isEmpty()) {
+//                    return;
+//                }
+//
+//                Log.d("FCM", "Sending notification to FCM token(sendMessage): " + token);
+//                Log.d("FCM", "Notification title: " + alert.getTitle());
+//                Log.d("FCM", "Notification message: " + alert.getDescription());
+//
+//                // Create the payload data for the Firebase Cloud Function
+//                Map<String, Object> payload = new HashMap<>();
+//                payload.put("title", alert.getTitle());
+//                payload.put("message", alert.getDescription());
+//                payload.put("token", token);
+//
+//                // Call the Firebase Cloud Function to send the push notification
+//                FirebaseFunctions.getInstance()
+//                        .getHttpsCallable("sendNoticationToUser")
+//                        .call(payload)
+//                        .addOnCompleteListener(task -> {
+//                            if (task.isSuccessful()) {
+//                                Log.d("FCM", "Notification sent successfully to FCM token: " + token);
+//                            } else {
+//                                Log.e("FCM", "Error sending notification to FCM token: " + token, task.getException());
+//                            }
+//                        });
+//                FirebaseMessaging.getInstance().getToken()
+//                        .addOnCompleteListener(new OnCompleteListener<String>() {
+//                            @Override
+//                            public void onComplete(@NonNull Task<String> task) {
+//                                if (!task.isSuccessful()) {
+//                                    Log.w(TAG, "Fetching FCM registration token failed", task.getException());
+//                                    return;
+//                                }
+//
+//                                // Get new FCM registration token
+//                                String token = task.getResult();
+//
+//                                // Add your code to check if the token is registered with FCM
+//                                FirebaseInstanceId.getInstance().getInstanceId()
+//                                        .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
+//                                            @Override
+//                                            public void onComplete(@NonNull Task<InstanceIdResult> task) {
+//                                                if (!task.isSuccessful()) {
+//                                                    Log.w(TAG, "getInstanceId failed", task.getException());
+//                                                    return;
+//                                                }
+//
+//                                                // Get instance ID token
+//                                                String fcmToken = task.getResult().getToken();
+//
+//                                                // Check if the token is registered with FCM
+//                                                boolean isRegistered = FirebaseMessaging.getInstance().isAutoInitEnabled();
+//
+//                                                if (isRegistered) {
+//                                                    Log.d(TAG, "FCM registration token is registered with FCM: " + fcmToken);
+//                                                } else {
+//                                                    Log.d(TAG, "FCM registration token is not registered with FCM: " + fcmToken);
+//                                                }
+//                                            }
+//                                        });
+//                            }
+//                        });
+//
+//            }
+//        }).start();
+//    }
+
+//    private void sendNotificationToUsers(Set<String> tokens, Alert alert) {
+//        // Create the notification channel
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            NotificationChannel channel = new NotificationChannel("CHANNEL_ID", "Channel Name", NotificationManager.IMPORTANCE_HIGH);
+//            NotificationManager manager = getSystemService(NotificationManager.class);
+//            manager.createNotificationChannel(channel);
+//        }
+//
+//        // Build the notification message
+//        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "CHANNEL_ID")
+//                .setSmallIcon(R.drawable.ic_launcher_background)
+//                .setContentTitle("Alert nearby!")
+//                .setContentText("An alert has been verified near your location.")
+//                .setPriority(NotificationCompat.PRIORITY_HIGH)
+//                .setAutoCancel(true);
+//
+//        // Create the intent to open the app when the user taps on the notification
+//        Intent intent = new Intent(this, AdminActivity.class);
+//        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+//        builder.setContentIntent(pendingIntent);
+//
+//        // Send the notification to each nearby user
+//        for (String token : tokens) {
+//            if (token == null || token.isEmpty()) {
+//                return;
+//            }
+//
+//            Log.d("FCM", "Sending notification to FCM token(sendMessage): " + token);
+//            Log.d("FCM", "Notification title: " + alert.getTitle());
+//            Log.d("FCM", "Notification message: " + alert.getDescription());
+//
+//
+//            FirebaseMessaging.getInstance().send(new RemoteMessage.Builder(token)
+//                    .setMessageId(UUID.randomUUID().toString())
+//                    .addData("title", alert.getTitle())
+//                    .addData("message", alert.getDescription())
+//                    .build());
+//        }
+//    }
+
+
+
+
+
+//    private void findNearbyUsers(Alert alert) {
+//        Toast.makeText(this, "findNearbyUsers() called", Toast.LENGTH_SHORT).show();
+//        DatabaseReference alertsRef = database.getReference("ALERT");
+//        DatabaseReference usersRef = database.getReference("USER");
+//
+//        alertsRef.child(alert.getTitle()).addListenerForSingleValueEvent(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(DataSnapshot dataSnapshot) {
+//                double alertLat = dataSnapshot.child("lat").getValue(Double.class);
+//                double alertLng = dataSnapshot.child("lng").getValue(Double.class);
+//
+//                usersRef.addListenerForSingleValueEvent(new ValueEventListener() {
+//                    @Override
+//                    public void onDataChange(DataSnapshot dataSnapshot) {
+////                        List<String> nearbyUsers = new ArrayList<>();
+//                        Set<String> nearbyUsers = new HashSet<>();
+//                        double distanceThreshold = 500; // meters
+//
+//                        for (DataSnapshot userSnapshot : dataSnapshot.getChildren()) {
+//                            double userLat = userSnapshot.child("lat").getValue(Double.class);
+//                            double userLng = userSnapshot.child("lng").getValue(Double.class);
+//                            String fcmToken = userSnapshot.child("fcmToken").getValue(String.class); // Get the FCM token
+//
+//                            float[] results = new float[1];
+//                            Location.distanceBetween(alertLat, alertLng, userLat, userLng, results);
+//                            float distance = results[0];
+//
+//                            if (distance <= distanceThreshold && fcmToken != null) {
+//                                nearbyUsers.add(fcmToken); // Add the FCM token to the list of nearby users
+//                            }
+//                        }
+//
+//                        // Send a push notification to each nearby user
+//                        for (String fcmToken : nearbyUsers) {
+//
+//                            Log.d("FCM", "Sending message to FCM token: " + fcmToken);
+//
+//                            sendMessage(fcmToken, alert.getTitle(), alert.getDescription());
+//                        }
+//                    }
+//
+//                    @Override
+//                    public void onCancelled(@NonNull DatabaseError error) {
+//                        // Handle the error
+//                        Log.e("FCM", "Failed to read user data", error.toException());
+//
+//                    }
+//                });
+//            }
+//
+//            @Override
+//            public void onCancelled(@NonNull DatabaseError error) {
+//                // Handle the error
+//                Log.e("FCM", "Failed to read alert data", error.toException());
+//
+//            }
+//        });
+//    }
+//
+//    public void sendMessage(String fcmToken, String title, String message) {
+//        // Create a data payload for the message
+//        Map<String, String> dataPayload = new HashMap<>();
+//        dataPayload.put("title", title);
+//        dataPayload.put("message", message);
+//
+//        // Create a notification channel
+//        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+//        String channelId = "my_channel_id";
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            NotificationChannel channel = new NotificationChannel(channelId, "My Channel", NotificationManager.IMPORTANCE_HIGH);
+//            notificationManager.createNotificationChannel(channel);
+//        }
+//
+//        // Build the notification
+//        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelId)
+//                .setSmallIcon(R.drawable.ic_launcher_background)
+//                .setContentTitle(title)
+//                .setContentText(message)
+//                .setPriority(NotificationCompat.PRIORITY_HIGH)
+//                .setCategory(NotificationCompat.CATEGORY_ALARM)
+//                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+//                .setAutoCancel(true);
+//
+//        // Create an intent to open the app when the notification is clicked
+//        Intent intent = new Intent(this, LoginActivity.class);
+//        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+//        builder.setContentIntent(pendingIntent);
+//
+//        // Show the notification
+//        int notificationId = (int) System.currentTimeMillis(); // Use a unique ID for each notification
+//        notificationManager.notify(notificationId, builder.build());
+//
+//        // Create a new message to send
+//        RemoteMessage pushMessage = new RemoteMessage.Builder(fcmToken)
+//                .setMessageId(Integer.toString(Math.abs(new Random().nextInt())))
+//                .setData(dataPayload)
+//                .build();
+//
+//        try {
+//            // Send the message
+//            FirebaseApp.initializeApp(AdminActivity.this);
+//            FirebaseMessaging.getInstance().send(pushMessage);
+//
+//            // Print the message ID for confirmation
+//            System.out.println("Successfully sent message ");
+//        } catch (Exception e) {
+//            System.err.println("Error sending message: " + e.getMessage());
+//        }
+//    }
+
+
+//    public void sendMessage(String fcmToken, String title, String message) {
+//        // Create a data payload for the message
+//        Map<String, String> dataPayload = new HashMap<>();
+//        dataPayload.put("title", title);
+//        dataPayload.put("message", message);
+//
+//        // Create a new message to send
+//        RemoteMessage pushMessage = new RemoteMessage.Builder(fcmToken)
+//                .setMessageId(Integer.toString(Math.abs(new Random().nextInt())))
+//                .setData(dataPayload)
+//                .build();
+//
+//        try {
+//            // Send the message
+//            FirebaseApp.initializeApp(AdminActivity.this);
+//            FirebaseMessaging.getInstance().send(pushMessage);
+//
+//            // Print the message ID for confirmation
+//            System.out.println("Successfully sent message ");
+//        } catch (Exception e) {
+//            System.err.println("Error sending message: " + e.getMessage());
+//        }
+//    }
+
+
+
+
+
+
+//    private void sendMessage(String fcmToken, String title, String message) {
+//        if (fcmToken == null || fcmToken.isEmpty()) {
+//            return;
+//        }
+//
+//        Log.d("FCM", "Sending notification to FCM token(sendMessage): " + fcmToken);
+//        Log.d("FCM", "Notification title: " + title);
+//        Log.d("FCM", "Notification message: " + message);
+//
+//
+//        FirebaseMessaging.getInstance().send(new RemoteMessage.Builder(fcmToken)
+//                .setMessageId(UUID.randomUUID().toString())
+//                .addData("title", title)
+//                .addData("message", message)
+//                .build());
+//
+//
+//    }
+
+    private void getUserFcmToken(String uid, Consumer<String> callback) {
         DatabaseReference usersRef = database.getReference("USER");
 
-        alertsRef.orderByChild("verified").equalTo(true).addListenerForSingleValueEvent(new ValueEventListener() {
+        usersRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                for (DataSnapshot alertSnapshot : dataSnapshot.getChildren()) {
-                    double alertLat = alertSnapshot.child("lat").getValue(Double.class);
-                    double alertLng = alertSnapshot.child("lng").getValue(Double.class);
+                String fcmToken = dataSnapshot.child("fcmToken").getValue(String.class);
+                Log.d("MyApp", "FCM Token for " + uid + " is " + fcmToken);
 
-                    usersRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(DataSnapshot dataSnapshot) {
-                            List<String> nearbyUsers = new ArrayList<String>();
-                            double distanceThreshold = 1000; // meters
-
-                            for (DataSnapshot userSnapshot : dataSnapshot.getChildren()) {
-                                double userLat = userSnapshot.child("lat").getValue(Double.class);
-                                double userLng = userSnapshot.child("lng").getValue(Double.class);
-
-                                float[] results = new float[1];
-                                Location.distanceBetween(alertLat, alertLng, userLat, userLng, results);
-                                float distance = results[0];
-
-                                if (distance <= distanceThreshold) {
-                                    nearbyUsers.add(userSnapshot.getKey());
-                                }
-                            }
-
-                            // Perform desired action on nearby users here
-                            Toast.makeText(AdminActivity.this, "found nearby user", Toast.LENGTH_SHORT).show();
-                        }
-
-                        @Override
-                        public void onCancelled(DatabaseError databaseError) {
-                            // Handle error
-                        }
-                    });
-                }
+                callback.accept(fcmToken);
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-                // Handle error
+                // Handle onCancelled
             }
         });
     }
+
+
 
 
 

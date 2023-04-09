@@ -10,15 +10,25 @@ public class User {
     private String role;
     private double lat;
     private double lng;
+    private String fcmToken;
+
+    public String getFcmToken() {
+        return fcmToken;
+    }
+
+    public void setFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
+    }
 
     public User() {
 
     }
-    public User(String email, String name, double lat, double lng) {
+    public User(String email, String name, double lat, double lng, String fcmToken) {
         this.email = email;
         this.name = name;
         this.lat = lat;
         this.lng = lng;
+        this.fcmToken = fcmToken;
 
         if(email.equals("p18023@unipi.gr") || email.equals("stefbou9@gmail.com"))
             this.role = "admin";

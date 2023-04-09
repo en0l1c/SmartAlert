@@ -3,6 +3,7 @@ package com.enolic.smartalert;
 import java.util.Comparator;
 
 public class Alert {
+    private int id;
     private String title;
     private int timestamp;
     private String location;

@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "smartalert-1337",
+    "smartalert": "smartalert-1337"
+  },
+  "targets": {},
+  "etags": {}
+}

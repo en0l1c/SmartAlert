@@ -18,6 +18,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -31,6 +32,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 public class RegisterActivity extends AppCompatActivity implements LocationListener{
 
@@ -164,6 +166,7 @@ public class RegisterActivity extends AppCompatActivity implements LocationListe
 
 
     public void registerUser() {
+
         if(!emailET.getText().toString().equals("") && !passwordET.getText().toString().equals("") && !fullNameET.getText().toString().equals("")) {
             mAuth.createUserWithEmailAndPassword(emailET.getText().toString(), passwordET.getText().toString())
                     .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
@@ -193,11 +196,24 @@ public class RegisterActivity extends AppCompatActivity implements LocationListe
                                     }
                                 });
 
-                                writeNewUserToDatabase(mAuth.getUid(),
-                                        emailET.getText().toString(),
-                                        fullNameET.getText().toString(),
-                                        lat,
-                                        lng);
+                                FirebaseMessaging.getInstance().getToken()
+                                        .addOnCompleteListener(new OnCompleteListener<String>() {
+                                            @Override
+                                            public void onComplete(@NonNull Task<String> task) {
+                                                if (task.isSuccessful()) {
+                                                    String fcmToken = task.getResult();
+
+                                                    writeNewUserToDatabase(mAuth.getUid(),
+                                                            emailET.getText().toString(),
+                                                            fullNameET.getText().toString(),
+                                                            lat,
+                                                            lng,
+                                                            fcmToken);
+                                                } else {
+                                                    Log.d("MyApp", "Failed to get FCM token: " + task.getException().getMessage());
+                                                }
+                                            }
+                                        });
 
                                 startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
                                 finish();
@@ -213,8 +229,8 @@ public class RegisterActivity extends AppCompatActivity implements LocationListe
         }
     }
 
-    public void writeNewUserToDatabase(String userId, String email, String name, double lat, double lng) {
-        User user = new User(email, name, lat, lng);
+    public void writeNewUserToDatabase(String userId, String email, String name, double lat, double lng, String fcmToken) {
+        User user = new User(email, name, lat, lng, fcmToken);
         databaseReference.child(userId).setValue(user);
     }
 
