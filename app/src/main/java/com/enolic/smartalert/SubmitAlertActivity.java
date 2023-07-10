@@ -305,12 +305,13 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
                     double lng = alertSnapshot.child("lng").getValue(Double.class);
 
                     // Check if the alert has the same category and userId submitted within the last hour
-                    if (category.equals(currentlySelectedCategory) && userId.equals(uid) && currentTime - timestamp < 3600) {
+                    if (category.equals(currentlySelectedCategory) && userId.equals(uid) && currentTime - timestamp < 1800) {
                         // Alert already exists, prevent user from submitting a new one
                         // Display an error message or disable the submit button
                         listener.onSubmitCheck(false);
                         return;
                     }
+
 
                     // Keep track of the latest alert with the same category submitted by the current user
                     if (category.equals(currentlySelectedCategory) && userId.equals(uid) && timestamp > lastAlertTimestamp) {
@@ -323,7 +324,7 @@ public class SubmitAlertActivity extends AppCompatActivity implements LocationLi
                 }
 
                 // Check if the last alert with the same category was submitted within the last hour
-                if (lastAlertSnapshot != null && currentTime - lastAlertTimestamp < 3600) {
+                if (lastAlertSnapshot != null && currentTime - lastAlertTimestamp < 1800) {
                     // Check if the user is far away (1km) from their last submission
                      lastAlertLat = lastAlertSnapshot.child("lat").getValue(Double.class);
                      lastAlertLng = lastAlertSnapshot.child("lng").getValue(Double.class);

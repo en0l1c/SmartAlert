@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:theme="@android:style/Theme.Dialog"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical" >
+
+
+    <!-- Timestamp -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:orientation="horizontal"
+        android:layout_gravity="left"
+        android:gravity="center">
+
+
+        <TextView
+            android:id="@+id/tsTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+
+            android:padding="10dp"
+            android:text="@string/timestampTV" />
+        <TextView
+            android:id="@+id/timestampTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+
+            android:textColor="#39FF14"
+            android:padding="10dp"
+            android:text="" />
+
+
+        <Button
+            android:id="@+id/refreshTsBtn"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="right"
+            android:padding="10dp"
+            android:layout_marginRight="10dp"
+            android:text=""
+            android:visibility="visible"
+            app:icon="@android:drawable/ic_popup_sync" />
+
+    </LinearLayout>
+
+    <!-- GPS -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_gravity="left"
+        android:gravity="center">
+
+
+        <TextView
+            android:id="@+id/gpsTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:padding="10dp"
+            android:text="@string/locationTV" />
+
+        <TextView
+            android:id="@+id/gpsTV"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:padding="10dp"
+            android:text="@string/waitToGetGps"
+            android:textColor="#39FF14" />
+
+        <Button
+            android:id="@+id/refreshGpsBtn"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center_horizontal|center_vertical"
+            android:padding="10dp"
+            android:layout_marginRight="10dp"
+            android:text=""
+            android:visibility="visible"
+            app:icon="@android:drawable/ic_popup_sync" />
+
+
+    </LinearLayout>
+
+
+
+</LinearLayout>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

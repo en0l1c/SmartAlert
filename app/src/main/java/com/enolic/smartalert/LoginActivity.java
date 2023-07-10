@@ -10,12 +10,15 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.location.Location;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.Toast;
 
@@ -26,9 +29,13 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.squareup.picasso.Picasso;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Locale;
+import java.util.TimeZone;
 
 public class LoginActivity extends AppCompatActivity {
     Alert alert;
@@ -61,8 +68,10 @@ public class LoginActivity extends AppCompatActivity {
         loadLanguage();
         setContentView(R.layout.activity_login);
 
+
         database = FirebaseDatabase.getInstance();
         referece = database.getReference("myMessage"); // path ena meros tou dentrou tis mi sxesiakis vasis
+
 
 
 
@@ -87,6 +96,8 @@ public class LoginActivity extends AppCompatActivity {
         compareAlerts();
         //compareAlertsLogin();
         passValuesToLists();
+
+        //showPermissionDialog("permissions", "this is the message");
 
 
         // take saved pref for language switch, and toogle it or not
@@ -377,111 +388,40 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
+    }
+
+    public void showPermissionDialog(String title, String message) {
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
 
 
 
+//        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this);
+        builder.setTitle(title)
+                .setMessage(message)
+                .setCancelable(true)
+                .setNeutralButton("Neutral button default text", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
 
+                    }
+                })
+                .setNegativeButton("BACK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                    }
+                })
+                .setPositiveButton("DELETE", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
 
+                    }
+                });
 
-//        int cnt = 0;
-//        DatabaseReference dataRef = FirebaseDatabase.getInstance().getReference("ALERT");
-//
-//        dataRef.addListenerForSingleValueEvent(new ValueEventListener() {
-//            @Override
-//            public void onDataChange(@NonNull DataSnapshot snapshot) {
-//                String fullList = "";
-//                // for every location on lats and lngs make a for loop to look for all other locations and match the neariest locations
-//
-//                int index = 0;
-//                int sameAlertCnt = 1;
-//                int userCnt = 1;
-//                ArrayList<String> totalUsers = new ArrayList<>();
-//                HashMap hashMap = new HashMap<String, Integer>();
-//
-//                while(index < lats.size()) {
-//                    // Location
-//                    double latFromList = lats.get(index);
-//                    double lngFromList = lngs.get(index);
-////                    double latFromList = 38.00356076; // uniwa
-////                    double lngFromList = 23.67547215;
-//
-//                    // Timestamp
-//                    int tsFromList = timestamps.get(index);
-//                    // Category
-//                    String catFromList = categories.get(index);
-//                    // User
-//                    String userFromList = users.get(index);
-//
-//
-//                    for(DataSnapshot dataSnapshot : snapshot.getChildren()) {
-//
-//                        Alert alert = snapshot.child(dataSnapshot.getKey()).getValue(Alert.class);
-//
-//                        // Location
-//                        double latCurrent = dataSnapshot.child("lat").getValue(Double.class);
-//                        double lngCurrent = dataSnapshot.child("lng").getValue(Double.class);
-////                        double latCurrent = alert.getLat(); // current lat from for-loop reading the realtime database
-////                        double lngCurrent = alert.getLng();
-//
-//                        // Timestamp
-//                        int tsCurrent = alert.getTimestamp();
-//                        // Category
-//                        String catCurrent = alert.getCategory();
-//                        // User
-//                        String userCurrent = alert.getUserId();
-//
-//
-//                        double distance = AdminActivity.calcDistance(latFromList, lngFromList, latCurrent, lngCurrent);
-//                        boolean isTimeValid = AdminActivity.isTimeValid(tsFromList, tsCurrent);
-//                        boolean isCategoryValid = Objects.equals(catFromList, catCurrent);
-//                        boolean isDifferentUser = Objects.equals(userFromList, userCurrent);
-//
-//
-//                        if(distance < 0.9 && isTimeValid && isCategoryValid) {
-//
-//                            if(sameAlertCnt >= 6) {
-//                                fullList += "\n" + index + ": " + alert.getTitle() + " | Danger: 3";
-//                                alert.setDanger(3);
-//                                dataRef.child(dataSnapshot.getKey()).child("danger").setValue(alert.getDanger());
-//                            }
-//                            else if(sameAlertCnt >= 3 && sameAlertCnt <=5) {
-//                                fullList += "\n" + index + ": " + alert.getTitle() + " | Danger: 2";
-//                                alert.setDanger(2);
-//                                dataRef.child(dataSnapshot.getKey()).child("danger").setValue(alert.getDanger());
-//                            }
-//                            else {
-//                                fullList += "\n" + index + ": " + alert.getTitle() + " | Danger: 1";
-//                                alert.setDanger(1);
-//                                dataRef.child(dataSnapshot.getKey()).child("danger").setValue(alert.getDanger());
-//                            }
-//                            sameAlertCnt++;
-//                        }
-//
-//                        //Toast.makeText(LoginActivity.this, String.valueOf("Lat from snaps: " + latCurrent), Toast.LENGTH_SHORT).show();
-//                        //Toast.makeText(LoginActivity.this, String.valueOf(distance), Toast.LENGTH_SHORT).show();
-//
-//
-//                    }
-//                    sameAlertCnt = 1;
-//                    fullList += "\n";
-//                    index++;
-//                }
-//
-//
-//// !!!!!!!!!               showMessage(users.size() + "Near spots: " + userCnt, fullList);
-//            }
-//
-//            @Override
-//            public void onCancelled(@NonNull DatabaseError error) {
-//
-//            }
-//        });
+        androidx.appcompat.app.AlertDialog dialog = builder.create();
+        dialog.show();
 
-
-
-
-
-
+        Button neutralButton = dialog.getButton(DialogInterface.BUTTON_NEUTRAL);
+        String neutralBtnText = "Mark As important";
 
     }
 
